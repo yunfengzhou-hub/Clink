@@ -1,10 +1,10 @@
-pipeline/out
-pipeline/target
 .idea/
 .history/
 .DS_Store
 .vscode/
-pipeline/*.iml
-pipeline/*.log
-pipeline/alink_plugins
-pipeline/src/main/java/libfg
+*.class
+*.o
+*.so
+*.log
+java/*.iml
+java/target
