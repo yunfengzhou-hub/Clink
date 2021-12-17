@@ -1,6 +1,9 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@tf_runtime//:build_defs.bzl", "tfrt_cc_binary", "tfrt_cc_library")
 load("@llvm-project//mlir:tblgen.bzl", "gentbl_cc_library", "td_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library") 
+load("@rules_java//java:defs.bzl", "java_proto_library") 
+load("@rules_proto//proto:defs.bzl", "proto_library")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -59,6 +62,7 @@ tfrt_cc_library(
     visibility = [":friends"],
     deps = [
         "@tf_runtime//:hostcontext",
+        "//protos:OneHotEncoderCC",
     ],
 )
 
@@ -114,6 +118,170 @@ tfrt_cc_binary(
         "@tf_runtime//:hostcontext_alwayslink",
     ],
 )
+
+tfrt_cc_library(
+    name = "one_hot_encoder_cc",
+    srcs = [
+        "lib/linalg/sparse_vector.cc",
+        "lib/feature/one_hot_encoder.cc",
+        "lib/utils/jna_utils.cc",
+    ],
+    hdrs = [
+        "include/clink/linalg/sparse_vector.h",
+        "include/clink/feature/one_hot_encoder.h",
+        "include/clink/utils/jna_utils.h",
+    ],
+    alwayslink_static_registration_src = "lib/kernels/static_registration.cc",
+    visibility = [":friends"],
+    deps = [
+        "@tf_runtime//:hostcontext",
+        "//protos:OneHotEncoderCC",
+    ],
+)
+
+tfrt_cc_binary(
+    name = "one_hot_encoder_jna",
+    srcs = [
+        "lib/linalg/sparse_vector.cc",
+        "lib/feature/one_hot_encoder.cc",
+        "lib/feature/one_hot_encoder_jna.cc",
+        "lib/utils/jna_utils.cc",
+    ],
+    linkshared = True,
+    visibility = [":friends"],
+    deps = [
+        ":one_hot_encoder_cc",
+        "@tf_runtime//:hostcontext_alwayslink"
+    ],
+)
+
+java_import(
+    name = "flink-ml",
+    jars = [
+        "java-lib/lib/flink-ml-core-0.1-SNAPSHOT.jar",
+        "java-lib/lib/flink-ml-lib_2.11-0.1-SNAPSHOT.jar",
+    ],
+)
+
+java_library(
+    name = "one_hot_encoder_java",
+    srcs = [
+        "java-lib/src/main/java/org/apache/flink/ml/jna/linalg/SparseVector.java",
+        "java-lib/src/main/java/org/apache/flink/ml/proto/feature/onehotencoder/OneHotEncoder.java",
+        "java-lib/src/main/java/org/apache/flink/ml/proto/feature/onehotencoder/OneHotEncoderModel.java",
+        "java-lib/src/main/java/org/apache/flink/ml/jna/feature/onehotencoder/OneHotEncoderModel.java",
+        "java-lib/src/main/java/org/apache/flink/ml/jna/feature/onehotencoder/OneHotEncoderNative.java",
+        "java-lib/src/main/java/org/apache/flink/ml/jna/util/ReadWriteUtils.java",
+        "java-lib/src/main/java/org/apache/flink/ml/jna/util/JNAUtils.java",
+    ],
+    visibility = [":friends"],
+    deps = [
+        "@maven//:net_java_dev_jna_jna_platform",
+        "@maven//:net_java_dev_jna_jna",
+        "@maven//:org_apache_flink_flink_core",
+        "@maven//:org_apache_flink_flink_streaming_java_2_11",
+        "@maven//:org_apache_flink_flink_table_api_java",
+        "@maven//:org_apache_flink_flink_table_api_java_bridge_2_11",
+        "@maven//:org_apache_flink_flink_clients_2_11",
+        "@maven//:org_apache_flink_flink_table_planner_2_11",
+        "@maven//:org_apache_flink_flink_test_utils_junit_1_14_0",
+        "@maven//:commons_collections_commons_collections_3_2_2",
+        ":one_hot_encoder_jna",
+        "flink-ml",
+        "//protos:OneHotEncoderJava",
+        "@com_google_protobuf//java/core",
+    ],
+)
+
+java_test(
+    name = "one_hot_encoder_java_test",
+    srcs = [
+        "java-lib/test/java/org/apache/flink/ml/jna/feature/OneHotEncoderTest.java",
+    ],
+    visibility = [":friends"],
+    deps = [
+        "@maven//:net_java_dev_jna_jna_platform",
+        "@maven//:net_java_dev_jna_jna",
+        "@maven//:org_apache_flink_flink_core",
+        "@maven//:org_apache_flink_flink_streaming_java_2_11",
+        "@maven//:org_apache_flink_flink_table_api_java",
+        "@maven//:org_apache_flink_flink_table_api_java_bridge_2_11",
+        "@maven//:org_apache_flink_flink_clients_2_11",
+        "@maven//:org_apache_flink_flink_table_planner_2_11",
+        "@maven//:org_apache_flink_flink_test_utils_junit_1_14_0",
+        "@maven//:commons_collections_commons_collections_3_2_2",
+        ":one_hot_encoder_java",
+        "flink-ml",
+        "//protos:OneHotEncoderJava",
+        "@com_google_protobuf//java/core",
+    ],
+    jvm_flags = [
+        "-Djna.library.path=.",
+    ],
+    test_class = "org.apache.flink.ml.proto.feature.OneHotEncoderTest",
+)
+
+
+java_binary(
+    name = "one_hot_encoder_java_main",
+    srcs = [
+        "java-lib/src/main/java/org/apache/flink/ml/jna/feature/onehotencoder/OneHotEncoderMain.java",
+    ],
+    visibility = [":friends"],
+    deps = [
+        "@maven//:net_java_dev_jna_jna_platform",
+        "@maven//:net_java_dev_jna_jna",
+        "@maven//:org_apache_flink_flink_core",
+        "@maven//:org_apache_flink_flink_streaming_java_2_11",
+        "@maven//:org_apache_flink_flink_table_api_java",
+        "@maven//:org_apache_flink_flink_table_api_java_bridge_2_11",
+        "@maven//:org_apache_flink_flink_clients_2_11",
+        "@maven//:org_apache_flink_flink_table_planner_2_11",
+        "@maven//:org_apache_flink_flink_test_utils_junit_1_14_0",
+        "@maven//:commons_collections_commons_collections_3_2_2",
+        ":one_hot_encoder_java",
+        "flink-ml",
+        "//protos:OneHotEncoderJava",
+        "@com_google_protobuf//java/core",
+    ],
+    jvm_flags = [
+        "-Djna.library.path=.",
+    ],
+    main_class = "org.apache.flink.ml.jna.feature.onehotencoder.OneHotEncoderMain",
+)
+# java_binary(
+#     name = "one_hot_encoder_example",
+#     srcs = [
+#         "java-lib/test/java/org/apache/flink/ml/jna/feature/OneHotEncoderTest.java",
+#         "java-lib/src/main/java/org/apache/flink/ml/jna/linalg/SparseVector.java",
+#         "java-lib/src/main/java/org/apache/flink/ml/proto/feature/onehotencoder/OneHotEncoder.java",
+#         "java-lib/src/main/java/org/apache/flink/ml/proto/feature/onehotencoder/OneHotEncoderModel.java",
+#         "java-lib/src/main/java/org/apache/flink/ml/proto/feature/onehotencoder/OneHotEncoderNative.java",
+#         "java-lib/src/main/java/org/apache/flink/ml/jna/util/ReadWriteUtils.java",
+#     ],
+#     visibility = [":friends"],
+#     deps = [
+#         "@maven//:net_java_dev_jna_jna_platform",
+#         "@maven//:net_java_dev_jna_jna",
+#         "@maven//:org_apache_flink_flink_core",
+#         "@maven//:org_apache_flink_flink_streaming_java_2_11",
+#         "@maven//:org_apache_flink_flink_table_api_java",
+#         "@maven//:org_apache_flink_flink_table_api_java_bridge_2_11",
+#         "@maven//:org_apache_flink_flink_clients_2_11",
+#         "@maven//:org_apache_flink_flink_table_planner_2_11",
+#         "@maven//:org_apache_flink_flink_test_utils_junit_1_14_0",
+#         "@maven//:commons_collections_commons_collections_3_2_2",
+#         "@maven//:junit_junit_4_12",
+#         ":clink_kernels_jna",
+#         "flink-ml",
+#         "//protos:OneHotEncoderJava",
+#         "@com_google_protobuf//java/core",
+#     ],
+#     jvm_flags = [
+#         "-Djna.library.path=.",
+#     ],
+#     main_class = "org.apache.flink.ml.proto.feature.OneHotEncoderTest",
+# )
 
 java_binary(
     name = "example",

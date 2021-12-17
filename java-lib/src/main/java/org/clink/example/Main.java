@@ -16,15 +16,29 @@
 
 package org.clink.example;
 
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.ml.api.AlgoOperator;
+import org.apache.flink.ml.linalg.SparseVector;
+import org.apache.flink.ml.param.Param;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.api.internal.TableImpl;
+import org.apache.flink.types.Row;
+
+import org.apache.flink.ml.proto.feature.onehotencoder.OneHotEncoderModel;
+
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.Properties;
 
 /** Simple example of native library declaration and usage. */
 public class Main {
-
     public interface ClinkKernels extends Library {
         ClinkKernels INSTANCE = (ClinkKernels) Native.loadLibrary("clink_kernels_jna", ClinkKernels.class);
 
