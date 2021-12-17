@@ -44,12 +44,73 @@ under the License.
     <connection>git@github.com:flink-extended/clink.git</connection>
   </scm>
 
+  <properties>
+    <flink.version>1.14.0</flink.version>
+    <flink.ml.version>0.1-SNAPSHOT</flink.ml.version>
+    <protobuf.version>3.14.0</protobuf.version>
+    <scala.version>2.11</scala.version>
+    <jna.version>5.6.0</jna.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>net.java.dev.jna</groupId>
       <artifactId>jna</artifactId>
-      <version>5.6.0</version>
+      <version>${jna.version}</version>
       <scope>provided</scope>
     </dependency>
+      <dependency>
+          <groupId>org.apache.flink</groupId>
+          <artifactId>flink-streaming-java_2.11</artifactId>
+          <version>${flink.version}</version>
+      </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table-api-java</artifactId>
+      <version>${flink.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-core</artifactId>
+      <version>${flink.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table-api-java-bridge_2.11</artifactId>
+      <version>${flink.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-ml-core</artifactId>
+      <version>${flink.ml.version}</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/lib/flink-ml-core-${flink.ml.version}.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-ml-lib_${scala.binary.version}</artifactId>
+      <version>${flink.ml.version}</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/lib/flink-ml-lib_${scala.version}-${flink.ml.version}.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf.version}</version>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.5.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

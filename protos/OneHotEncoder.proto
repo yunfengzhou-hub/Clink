@@ -1,0 +1,31 @@
+   
+// See README.txt for information and build instructions.
+//
+// Note: START and END tags are used in comments to define sections used in
+// tutorials.  They are not part of the syntax for Protocol Buffers.
+//
+// To get an in-depth walkthrough of this file and the related examples, see:
+// https://developers.google.com/protocol-buffers/docs/tutorials
+
+// [START declaration]
+syntax = "proto3";
+package clink;
+// [END declaration]
+
+// [START java_declaration]
+option java_multiple_files = true;
+option java_package = "org.apache.flink.ml.proto.feature.onehotencoder";
+option java_outer_classname = "OneHotEncoderProto";
+// [END java_declaration]
+
+// [START messages]
+message OneHotEncoderParams {
+    bool isDropLast = 1;
+    repeated string inputCols = 2;
+    repeated string outputCols = 3;
+}
+
+message OneHotEncoderModelData {
+    repeated int32 featureSize = 1;
+}
+// [END messages]

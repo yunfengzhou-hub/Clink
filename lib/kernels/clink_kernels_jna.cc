@@ -12,6 +12,8 @@
  * limitations under the License.
  */
 
+#include <iostream>
+#include <fstream>
 #include <string>
 
 #include "clink/kernels/clink_kernels.h"
@@ -20,6 +22,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+using namespace clink;
+using namespace std;
 
 double SquareAdd(double x, double y) {
   std::unique_ptr<HostContext> host_context =
@@ -40,6 +45,10 @@ double SquareAdd(double x, double y) {
 }
 
 double Square(double x) { return clink::Square(x); }
+
+void deleteObject(long ptr) {
+  delete (void *) ptr;
+}
 
 #ifdef __cplusplus
 }

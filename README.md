@@ -81,4 +81,24 @@ Clink uses [ClangFormat](https://clang.llvm.org/docs/ClangFormat.html) to format
 find . \( -name "*.cc" -or -name "*.h" \) -not -path "./tfrt/*" -exec clang-format -i -style=llvm {} \;
 ```
 
+### Running One Hot Encoder Example
+
+Prerequisite: build Flink ML master branch and place the following jar files in `./java-lib/lib/`:
+
+- flink-ml-core-0.1-SNAPSHOT.jar
+- flink-ml-lib_2.11-0.1-SNAPSHOT.jar
+
+Then run the following command:
+
+```
+bazel run //:one_hot_encoder_java_main
+```
+
+or
+
+```
+bazel run //:one_hot_encoder_java_test
+```
+
+
 
