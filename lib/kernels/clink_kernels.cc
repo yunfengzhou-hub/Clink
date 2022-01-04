@@ -14,6 +14,7 @@
 
 #include "clink/kernels/clink_kernels.h"
 
+#include "clink/feature/one_hot_encoder.h"
 #include "tfrt/host_context/async_dispatch.h"
 
 using namespace tfrt;
@@ -49,6 +50,19 @@ AsyncValueRef<double> SquareAdd(Argument<double> x, Argument<double> y,
 
 double Square(double x) { return x * x; }
 
+// RCReference<clink::OneHotEncoderModel> OneHotEncoderLoad(double x) {
+//   std::cout << __LINE__ << std::endl;
+//     clink::OneHotEncoderModel model;
+//     // return TakeRef(new clink::OneHotEncoderModel());
+//     return NULL;
+// }
+
+// clink::OneHotEncoderModel OneHotEncoderLoad(double x) {
+//   std::cout << __LINE__ << std::endl;
+//     clink::OneHotEncoderModel model;
+//     return std::move(clink::OneHotEncoderModel());
+// }
+
 //===----------------------------------------------------------------------===//
 // Registration
 //===----------------------------------------------------------------------===//
@@ -56,6 +70,7 @@ double Square(double x) { return x * x; }
 void RegisterClinkKernels(tfrt::KernelRegistry *registry) {
   registry->AddKernel("clink.square_add.f64", TFRT_KERNEL(SquareAdd));
   registry->AddKernel("clink.square.f64", TFRT_KERNEL(Square));
+  // registry->AddKernel("clink.feature.onehotencoder.load", TFRT_KERNEL(OneHotEncoderLoad));
 }
 
 } // namespace clink

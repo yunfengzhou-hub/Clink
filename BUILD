@@ -83,38 +83,41 @@ tfrt_cc_library(
     ],
 )
 
-gentbl_cc_library(
-    name = "clink_kernels_opdefs_inc_gen",
-    includes = ["include"],
-    tbl_outs = [
-        (
-            ["-gen-op-decls"],
-            "include/clink/kernels/opdefs/clink_kernels.h.inc",
-        ),
-        (
-            ["-gen-op-defs"],
-            "include/clink/kernels/opdefs/clink_kernels.cpp.inc",
-        ),
-    ],
-    tblgen = "@llvm-project//mlir:mlir-tblgen",
-    td_file = "include/clink/kernels/opdefs/clink_kernels.td",
-    deps = [
-        "@llvm-project//mlir:InferTypeOpInterfaceTdFiles",
-        "@llvm-project//mlir:SideEffectTdFiles",
-    ],
-)
+# gentbl_cc_library(
+#     name = "clink_kernels_opdefs_inc_gen",
+#     includes = ["include"],
+#     tbl_outs = [
+#         (
+#             ["-gen-op-decls"],
+#             "include/clink/kernels/opdefs/clink_kernels.h.inc",
+#         ),
+#         (
+#             ["-gen-op-defs"],
+#             "include/clink/kernels/opdefs/clink_kernels.cpp.inc",
+#         ),
+#     ],
+#     tblgen = "@llvm-project//mlir:mlir-tblgen",
+#     td_file = "include/clink/kernels/opdefs/clink_kernels.td",
+#     deps = [
+#         "@llvm-project//mlir:InferTypeOpInterfaceTdFiles",
+#         "@llvm-project//mlir:SideEffectTdFiles",
+#     ],
+# )
 
 tfrt_cc_library(
     name = "clink_kernels_opdefs",
     srcs = [
         "lib/kernels/opdefs/clink_kernels.cc",
+        "include/clink/kernels/opdefs/clink_kernels.cpp.inc",
     ],
     hdrs = [
         "include/clink/kernels/opdefs/clink_kernels.h",
+        "include/clink/kernels/opdefs/types.h",
+        "include/clink/kernels/opdefs/clink_kernels.h.inc",
     ],
     visibility = [":friends"],
     deps = [
-        ":clink_kernels_opdefs_inc_gen",
+        # ":clink_kernels_opdefs_inc_gen",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:SideEffects",
         "@llvm-project//mlir:Support",

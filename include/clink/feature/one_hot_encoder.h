@@ -19,13 +19,29 @@
 
 #include "clink/feature/proto/one_hot_encoder.pb.h"
 #include "clink/linalg/sparse_vector.h"
+#include "tfrt/support/ref_count.h"
 #include "llvm/Support/Errc.h"
 #include "llvm/Support/Error.h"
 
 namespace clink {
 
+class Model : public tfrt::ReferenceCounted<Model> {
+ public:
+  // virtual ~Model() {}
+
+  // virtual RCReference<Iterator> MakeIterator(
+  //     const IteratorContext& context) = 0;
+
+ private:
+  // For access to Destroy().
+  friend class ReferenceCounted<Model>;
+
+  // virtual void Destroy() = 0;
+};
+
 // A Model which encodes data into one-hot format.
-class OneHotEncoderModel {
+class OneHotEncoderModel : public Model {
+// class OneHotEncoderModel {
 public:
   // Default constructor.
   OneHotEncoderModel() {}
@@ -35,8 +51,8 @@ public:
   OneHotEncoderModel &operator=(OneHotEncoderModel &&other) = default;
 
   // This class is copyable and assignable.
-  OneHotEncoderModel(const OneHotEncoderModel &other) = default;
-  OneHotEncoderModel &operator=(const OneHotEncoderModel &) = default;
+  OneHotEncoderModel(const OneHotEncoderModel &other) = delete;
+  OneHotEncoderModel &operator=(const OneHotEncoderModel &) = delete;
 
   // Converts the provided data to a SparseVector.
   llvm::Expected<SparseVector> transform(const int value,
@@ -62,7 +78,14 @@ private:
 
   // Model data of OneHotEncoderModel.
   OneHotEncoderModelDataProto model_data_;
+
+
+  // void Destroy() override {
+  //   // internal::DestroyImpl<BatchDataset>(this, allocator_);
+  // }
 };
+
+// void OneHotEncoderModel::Destroy() {}
 
 } // namespace clink
 

@@ -17,5 +17,7 @@ func @main(%arg_0: f64) {
   %result = clink.square_add.f64 %value_1, %arg_0
 
   %ch1 = tfrt.print.f64 %result, %ch0
+
+  clink.feature.onehotencoder.load %value_1
   tfrt.return
 }

@@ -45,6 +45,14 @@ class Clink_Op<string mnemonic, list<OpTrait> traits = []> :
 }
 
 //===----------------------------------------------------------------------===//
+// Clink types
+//===----------------------------------------------------------------------===//
+
+def Clink_ModelType :
+  Type<CPred<"$_self.isa<clink::ModelType>()">, "!clink.onehotencoder type">,
+  BuildableType<"$_builder.getType<clink::ModelType>()">;
+
+//===----------------------------------------------------------------------===//
 // Clink ops
 //===----------------------------------------------------------------------===//
 
@@ -74,6 +82,20 @@ def SquareF64Op: Clink_Op<"square.f64"> {
   let results = (outs F64);
   let assemblyFormat = "operands attr-dict";
   let verifier = ?;
+}
+
+def OneHotEncoderLoadOp: Clink_Op<"feature.onehotencoder.load"> {
+  let summary = "feature.onehotencoder.load operation";
+  let description = [{
+     An operation that takes two inputs and returns their squared sum as the result.
+
+     Example:
+       %2 = clink.square_add.f64 %0, %1
+  }];
+  let arguments = (ins F64);
+  let results = (outs Clink_ModelType:$output_onehotencoder);
+  let assemblyFormat = "operands attr-dict";
+  // let verifier = ?;
 }
 
 #endif  // CLINK_OPS

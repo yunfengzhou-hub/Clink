@@ -16,6 +16,9 @@
 
 #include "clink/kernels/opdefs/clink_kernels.h"
 
+#include <iostream>
+
+#include "clink/kernels/opdefs/types.h"
 #include "mlir/IR/BuiltinOps.h"
 
 namespace clink {
@@ -33,6 +36,30 @@ ClinkDialect::ClinkDialect(MLIRContext *context)
 #define GET_OP_LIST
 #include "clink/kernels/opdefs/clink_kernels.cpp.inc"
       >();
+}
+
+mlir::Type ClinkDialect::parseType(mlir::DialectAsmParser &parser) const {
+  std::cout << __LINE__ << std::endl;
+  llvm::StringRef spec = parser.getFullSymbolSpec();
+  if (spec == "onehotencoder") return ModelType::get(getContext());
+
+  if (auto type = mlir::Dialect::parseType(parser)) return type;
+
+  mlir::Location loc = parser.getEncodedSourceLoc(parser.getNameLoc());
+  mlir::emitError(loc) << "unknown data type " << spec;
+  return {};
+}
+
+void ClinkDialect::printType(mlir::Type type,
+                            mlir::DialectAsmPrinter &printer) const {
+  std::cout << __LINE__ << std::endl;
+
+  if (type.isa<ModelType>()) {
+    printer << "onehotencoder";
+    return;
+  }
+
+  llvm_unreachable("unknown data type");
 }
 
 } // namespace clink
