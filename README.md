@@ -45,6 +45,12 @@ libstdc++8.
 docker build -t ubuntu:16.04_clink -f docker/Dockerfile_ubuntu_1604 .
 ```
 
+#### Build docker image based on Ubuntu 18.04
+
+```
+docker build -t ubuntu:18.04_clink -f docker/Dockerfile_ubuntu_1804 .
+```
+
 #### Build docker image based on CentOS 7.7
 
 Note that the CentOS Dockerfile needs to compile Clang 11 from source code.
