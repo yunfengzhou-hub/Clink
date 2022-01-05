@@ -18,20 +18,22 @@
 
 FROM centos:centos7.7.1908 as base
 
-RUN curl https://copr.fedorainfracloud.org/coprs/vbatts/bazel/repo/epel-7/vbatts-bazel-epel-7.repo > /etc/yum.repos.d/vbatts-bazel-epel-7.repo && \
-    echo "source /opt/rh/devtoolset-8/enable" >> ~/.bashrc
+RUN echo "hello, world"
 
-RUN yum update -y && yum install -y bazel4 centos-release-scl epel-release wget gcc
+# RUN curl https://copr.fedorainfracloud.org/coprs/vbatts/bazel/repo/epel-7/vbatts-bazel-epel-7.repo > /etc/yum.repos.d/vbatts-bazel-epel-7.repo && \
+#     echo "source /opt/rh/devtoolset-8/enable" >> ~/.bashrc
 
-RUN yum update -y && yum install -y cmake3 devtoolset-8
+# RUN yum update -y && yum install -y bazel4 centos-release-scl epel-release wget gcc
 
-RUN wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.1.0/llvm-project-11.1.0.src.tar.xz && tar xvf llvm-project-11.1.0.src.tar.xz
+# RUN yum update -y && yum install -y cmake3 devtoolset-8
 
-RUN mkdir /llvm-project-11.1.0.src/build && \
-    cd /llvm-project-11.1.0.src/build && \
-    source ~/.bashrc && \
-    cmake3 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS=clang -G "Unix Makefiles" ../llvm && \
-    make && \
-    make install -j 8 && \
-    rm -rf /llvm-project-11.1.0.src
+# RUN wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.1.0/llvm-project-11.1.0.src.tar.xz && tar xvf llvm-project-11.1.0.src.tar.xz
+
+# RUN mkdir /llvm-project-11.1.0.src/build && \
+#     cd /llvm-project-11.1.0.src/build && \
+#     source ~/.bashrc && \
+#     cmake3 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS=clang -G "Unix Makefiles" ../llvm && \
+#     make && \
+#     make install -j 8 && \
+#     rm -rf /llvm-project-11.1.0.src
 

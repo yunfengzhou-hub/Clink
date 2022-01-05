@@ -1,0 +1,41 @@
+name: Publish Clink Docker Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_repository:
+        description: 'Image Repository'
+        required: false
+        default: 'zhouyunfeng/clink-dev'
+      image_tag:
+        description: 'Image Tag'
+        required: false
+        default: 'latest'
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  push_to_registry:
+    name: Push Docker image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ['ubuntu_1604', 'centos_77']
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          file: ./docker/Dockerfile_${{ matrix.os }}
+          push: true
+          tags: ${{ github.event.inputs.image_repository }}:${{ github.event.inputs.image_tag }}_${{ matrix.os }}
+    
