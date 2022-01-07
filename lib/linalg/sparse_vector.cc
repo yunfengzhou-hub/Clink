@@ -15,39 +15,60 @@
  */
 
 #include "clink/linalg/sparse_vector.h"
-#include "tfrt/support/error_util.h"
 
-using namespace clink;
-using namespace std;
+namespace clink {
 
-llvm::Expected<double> SparseVector::get(const int index) {
+tfrt::AsyncValueRef<double> SparseVector::get(const int &index) {
   if (index >= n_) {
-    return tfrt::MakeStringError("Index out of range.");
+    return tfrt::MakeErrorAsyncValueRef("Index out of range.");
   }
 
   for (int i = 0; i < indices_.size(); i++) {
     if (indices_[i] == index) {
-      return values_[i];
+      return tfrt::MakeAvailableAsyncValueRef<double>(values_[i]);
     }
   }
-  return 0.0;
+  return tfrt::MakeAvailableAsyncValueRef<double>(0.0);
 }
 
-llvm::Error SparseVector::set(const int index, const double value) {
+tfrt::AsyncValueRef<tfrt::Chain> SparseVector::set(const int &index,
+                                                   const double &value) {
   if (index >= n_) {
-    return tfrt::MakeStringError("Index out of range.");
+    return tfrt::MakeErrorAsyncValueRef("Index out of range.");
   }
 
   for (int i = 0; i < indices_.size(); i++) {
     if (indices_[i] == index) {
       values_[i] = value;
-      return llvm::Error::success();
+      return tfrt::MakeAvailableAsyncValueRef<tfrt::Chain>();
     }
   }
 
   indices_.push_back(index);
   values_.push_back(value);
-  return llvm::Error::success();
+  return tfrt::MakeAvailableAsyncValueRef<tfrt::Chain>();
 }
 
 int SparseVector::size() { return n_; }
+
+std::string SparseVector::toString() {
+  std::string result = "(";
+  result += std::to_string(n_) + ", (";
+  for (int i = 0; i < indices_.size(); i++) {
+    result += std::to_string(indices_[i]);
+    if (i < indices_.size() - 1) {
+      result += ", ";
+    }
+  }
+  result += "), (";
+  for (int i = 0; i < values_.size(); i++) {
+    result += std::to_string(values_[i]);
+    if (i < values_.size() - 1) {
+      result += ", ";
+    }
+  }
+  result += ")";
+  return result;
+}
+
+} // namespace clink

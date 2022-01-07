@@ -14,79 +14,104 @@
  * limitations under the License.
  */
 
-#include "fstream"
-#include <cstdlib>
-#include <string>
-#include <sys/stat.h>
-
 #include "clink/cpp_tests/test_util.h"
 #include "clink/feature/one_hot_encoder.h"
-#include "nlohmann/json.hpp"
 #include "gtest/gtest.h"
 
-namespace tfrt {
+namespace clink {
+
 namespace {
 
 TEST(OneHotEncoderTest, Param) {
-  clink::OneHotEncoderModel model;
-  model.setDropLast(false);
-  EXPECT_EQ(model.getDropLast(), false);
-  model.setDropLast(true);
-  EXPECT_EQ(model.getDropLast(), true);
+  RCReference<OneHotEncoderModel> model =
+      tfrt::TakeRef(test::test_host_context->Construct<OneHotEncoderModel>(
+          test::test_host_context.get()));
+  model->setDropLast(false);
+  EXPECT_FALSE(model->getDropLast());
+  model->setDropLast(true);
+  EXPECT_TRUE(model->getDropLast());
 }
 
 TEST(OneHotEncoderTest, Transform) {
-  clink::OneHotEncoderModelDataProto model_data;
+  OneHotEncoderModelDataProto model_data;
   model_data.add_featuresizes(2);
   model_data.add_featuresizes(3);
   std::string model_data_str;
   model_data.SerializeToString(&model_data_str);
 
-  clink::OneHotEncoderModel model;
-  model.setDropLast(false);
-  llvm::Error err = model.setModelData(model_data_str);
-  EXPECT_EQ(!err, true);
+  RCReference<OneHotEncoderModel> model =
+      tfrt::TakeRef(test::test_host_context->Construct<OneHotEncoderModel>(
+          test::test_host_context.get()));
+  model->setDropLast(false);
+  llvm::Error err = model->setModelData(std::move(model_data_str));
+  EXPECT_FALSE(err);
 
-  auto vector = model.transform(1, 0);
-  EXPECT_EQ(!vector.takeError(), true);
+  auto vector = model->transform(1, 0);
+  EXPECT_TRUE(vector.IsConcrete());
   EXPECT_EQ(vector->get(1).get(), 1.0);
 
-  auto invalid_value_vector = model.transform(1, 5);
-  EXPECT_EQ(!invalid_value_vector.takeError(), false);
+  auto invalid_value_vector = model->transform(1, 5);
+  EXPECT_FALSE(invalid_value_vector.IsConcrete());
 
-  auto invalid_index_vector = model.transform(5, 0);
-  EXPECT_EQ(!invalid_index_vector.takeError(), false);
+  auto invalid_index_vector = model->transform(5, 0);
+  EXPECT_FALSE(invalid_index_vector.IsConcrete());
 }
 
 TEST(OneHotEncoderTest, Load) {
-  std::string dir_name = clink::test::createTemporaryFolder();
+  test::TemporaryFolder tmp_folder;
 
   nlohmann::json params;
   params["paramMap"]["dropLast"] = "false";
 
-  std::ofstream params_output(dir_name + "/metadata");
-  params_output << params;
-  params_output.close();
-
-  clink::OneHotEncoderModelDataProto model_data;
+  OneHotEncoderModelDataProto model_data;
   model_data.add_featuresizes(2);
   model_data.add_featuresizes(3);
 
-  mkdir((dir_name + "/data").c_str(), S_IRWXU);
-  std::ofstream model_data_output(dir_name + "/data/" +
-                                  clink::test::generateRandomString());
-  model_data.SerializeToOstream(&model_data_output);
-  model_data_output.close();
+  test::saveMetaDataModelData(tmp_folder.getAbsolutePath(), params, model_data);
 
-  auto model = clink::OneHotEncoderModel::load(dir_name);
-  EXPECT_EQ(!model.takeError(), true);
+  auto model = OneHotEncoderModel::load(tmp_folder.getAbsolutePath(),
+                                        test::test_host_context.get());
+  EXPECT_FALSE(model.takeError());
 
-  auto vector = model->transform(1, 0);
-  EXPECT_EQ(!vector.takeError(), true);
+  auto vector = model.get()->transform(1, 0);
+  EXPECT_TRUE(vector.IsConcrete());
   EXPECT_EQ(vector->get(1).get(), 1.0);
+}
 
-  clink::test::deleteFolderRecursively(dir_name);
+TEST(OneHotEncoderTest, Mlir) {
+  test::TemporaryFolder tmp_folder;
+
+  nlohmann::json params;
+  params["paramMap"]["dropLast"] = "false";
+
+  OneHotEncoderModelDataProto model_data;
+  model_data.add_featuresizes(2);
+  model_data.add_featuresizes(3);
+
+  test::saveMetaDataModelData(tmp_folder.getAbsolutePath(), params, model_data);
+
+  // TODO: Separate the load process that is triggered only once and the
+  // repeatedly triggered transform process into different scripts.
+  auto mlir_script = R"mlir(
+    func @main(%path: !tfrt.string, %value: i32, %column_index: i32) -> !tfrt.string {
+      %model = clink.onehotencoder_load %path
+      %vector = clink.onehotencoder_transform %model, %value, %column_index
+      %vector_string = clink.sparsevector_tostring %vector
+      tfrt.return %vector_string : !tfrt.string
+    }
+  )mlir";
+
+  llvm::SmallVector<RCReference<AsyncValue>> inputs;
+  inputs.push_back(tfrt::MakeAvailableAsyncValueRef<std::string>(
+      tmp_folder.getAbsolutePath()));
+  inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(1));
+  inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(0));
+
+  auto results = test::runMlirScript(mlir_script, inputs);
+  EXPECT_EQ(results.size(), 1);
+  test::test_host_context->Await(results[0]);
+  EXPECT_EQ(results[0]->get<std::string>(), "(2, (1), (1.000000)");
 }
 
 } // namespace
-} // namespace tfrt
+} // namespace clink
