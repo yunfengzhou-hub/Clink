@@ -82,10 +82,13 @@ OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
   return vector;
 }
 
-llvm::ArrayRef<tfrt::AsyncValue> transform(llvm::ArrayRef<tfrt::AsyncValue> inputs) {
-  int value = inputs.get(0)
+llvm::ArrayRef<tfrt::AsyncValue *> OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
+  int value = inputs[0]->get<int>();
+  int columnIndex = inputs[1]->get<int>();
 
-  llvm::ArrayRef<tfrt::AsyncValue> outputs;
+  tfrt::AsyncValueRef<SparseVector> vector = this->transform(value, columnIndex);
+
+  return llvm::ArrayRef<tfrt::AsyncValue *>{vector.release()};
 }
 
 void OneHotEncoderModel::setDropLast(const bool &is_droplast) {
