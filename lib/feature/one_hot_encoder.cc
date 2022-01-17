@@ -62,9 +62,11 @@ std::string getOnlyFileInDirectory(std::string path) {
 
 tfrt::AsyncValueRef<SparseVector>
 OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
   if (columnIndex >= model_data_.featuresizes_size()) {
     return tfrt::MakeErrorAsyncValueRef("Column index out of range.");
   }
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
 
   int len = model_data_.featuresizes(columnIndex);
   if (value >= len) {
@@ -73,12 +75,14 @@ OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
   if (getDropLast()) {
     len -= 1;
   }
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
 
   tfrt::AsyncValueRef<SparseVector> vector =
       tfrt::MakeAvailableAsyncValueRef<SparseVector>(len);
   if (value < len) {
     vector->set(value, 1.0);
   }
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
   return vector;
 }
 
@@ -87,8 +91,9 @@ llvm::ArrayRef<tfrt::AsyncValue *> OneHotEncoderModel::transform(llvm::ArrayRef<
   int columnIndex = inputs[1]->get<int>();
 
   tfrt::AsyncValueRef<SparseVector> vector = this->transform(value, columnIndex);
+  std::cout << __FILE__ << " " << __LINE__ << " " << vector->toString() << std::endl;
 
-  return llvm::ArrayRef<tfrt::AsyncValue *>{vector.release()};
+  return llvm::ArrayRef<tfrt::AsyncValue *>{vector.GetAsyncValue()};
 }
 
 void OneHotEncoderModel::setDropLast(const bool &is_droplast) {
