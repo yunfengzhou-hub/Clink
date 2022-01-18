@@ -80,6 +80,15 @@ OneHotEncoderTransform(RCReference<OneHotEncoderModel> model,
   return model->transform(value.get(), column_index.get());
 }
 
+void ModelLoad(Argument<std::string> path,
+                       Result<RCReference<Model>> result_model,
+                       KernelErrorHandler handler,
+                       const ExecutionContext &exec_ctx) {
+  auto model = OneHotEncoderModel::load(path.get(), exec_ctx.host());
+  CLINK_RETURN_IF_ERROR(handler, model.takeError());
+  result_model.Emplace(model.get());
+}
+
 std::string SparseVectorToString(Argument<SparseVector> vector) {
   return vector->toString();
 }

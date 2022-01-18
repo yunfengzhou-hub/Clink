@@ -117,16 +117,16 @@ OneHotEncoderModel::setModelData(const std::string &model_data_str) {
   return llvm::Error::success();
 }
 
-llvm::Expected<tfrt::RCReference<OneHotEncoderModel>>
+llvm::Error
 OneHotEncoderModel::load(const std::string &path, tfrt::HostContext *host) {
-  tfrt::RCReference<OneHotEncoderModel> model =
-      TakeRef(host->Construct<OneHotEncoderModel>(host));
+  // tfrt::RCReference<OneHotEncoderModel> model =
+  //     TakeRef(host->Construct<OneHotEncoderModel>(host));
 
   std::ifstream params_input(path + "/metadata");
   nlohmann::json params;
   params << params_input;
   std::string is_droplast = params["paramMap"]["dropLast"].get<std::string>();
-  model->setDropLast(is_droplast.compare("false"));
+  setDropLast(is_droplast.compare("false"));
   params_input.close();
 
   std::string model_data_filename = getOnlyFileInDirectory(path + "/data");
@@ -139,7 +139,7 @@ OneHotEncoderModel::load(const std::string &path, tfrt::HostContext *host) {
   std::ifstream model_data_input(path + "/data/" + model_data_filename);
   std::string model_data_str((std::istreambuf_iterator<char>(model_data_input)),
                              std::istreambuf_iterator<char>());
-  llvm::Error err = model->setModelData(std::move(model_data_str));
+  llvm::Error err = setModelData(std::move(model_data_str));
   model_data_input.close();
 
   if (err) {
@@ -148,7 +148,7 @@ OneHotEncoderModel::load(const std::string &path, tfrt::HostContext *host) {
         "/data/" + model_data_filename);
   }
 
-  return model;
+  return llvm::Error::success();
 }
 
 } // namespace clink

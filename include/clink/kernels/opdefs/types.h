@@ -27,6 +27,18 @@ public:
   using Base::Base;
 };
 
+class ModelInputType
+    : public mlir::Type::TypeBase<ModelInputType, mlir::Type, mlir::TypeStorage> {
+public:
+  using Base::Base;
+};
+
+class ModelOutputType
+    : public mlir::Type::TypeBase<ModelOutputType, mlir::Type, mlir::TypeStorage> {
+public:
+  using Base::Base;
+};
+
 class SparseVectorType
     : public mlir::Type::TypeBase<SparseVectorType, mlir::Type,
                                   mlir::TypeStorage> {

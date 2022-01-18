@@ -31,7 +31,7 @@ ClinkDialect::ClinkDialect(MLIRContext *context)
   allowUnknownTypes();
   allowUnknownOperations();
 
-  addTypes<ModelType, SparseVectorType>();
+  addTypes<ModelType, ModelInputType, ModelOutputType, SparseVectorType>();
 
   addOperations<
 #define GET_OP_LIST
@@ -43,6 +43,10 @@ mlir::Type ClinkDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef spec = parser.getFullSymbolSpec();
   if (spec == "model")
     return ModelType::get(getContext());
+  if (spec == "modelinput")
+    return ModelInputType::get(getContext());
+  if (spec == "modeloutput")
+    return ModelOutputType::get(getContext());
   if (spec == "sparsevector")
     return SparseVectorType::get(getContext());
 
@@ -58,6 +62,16 @@ void ClinkDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter &printer) const {
   if (type.isa<ModelType>()) {
     printer << "model";
+    return;
+  }
+
+  if (type.isa<ModelInputType>()) {
+    printer << "modelinput";
+    return;
+  }
+
+  if (type.isa<ModelOutputType>()) {
+    printer << "modeloutput";
     return;
   }
 

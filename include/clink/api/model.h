@@ -34,6 +34,10 @@ public:
     allocator->DeallocateBytes(ptr, sizeof(SubClass));
   }
 
+  virtual llvm::SmallVector<tfrt::AsyncValue *, 1> transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) = 0;
+
+  virtual llvm::Error load(std::string path, tfrt::HostContext *host) = 0;
+
 private:
   // For access to Destroy().
   friend class ReferenceCounted<Model>;

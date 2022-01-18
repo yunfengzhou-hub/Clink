@@ -51,6 +51,14 @@ def Clink_ModelType :
   Type<CPred<"$_self.isa<clink::ModelType>()">, "!clink.model type">,
   BuildableType<"$_builder.getType<clink::ModelType>()">;
 
+def Clink_ModelInputType :
+  Type<CPred<"$_self.isa<clink::ModelInputType>()">, "!clink.modelinput type">,
+  BuildableType<"$_builder.getType<clink::ModelInputType>()">;
+
+def Clink_ModelOutputType :
+  Type<CPred<"$_self.isa<clink::ModelOutputType>()">, "!clink.modeloutput type">,
+  BuildableType<"$_builder.getType<clink::ModelOutputType>()">;
+
 def Clink_SparseVectorType :
   Type<CPred<"$_self.isa<clink::SparseVectorType>()">, "!clink.sparsevector type">,
   BuildableType<"$_builder.getType<clink::SparseVectorType>()">;
