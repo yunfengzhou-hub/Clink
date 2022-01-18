@@ -42,7 +42,7 @@ public:
   tfrt::AsyncValueRef<SparseVector> transform(const int &value,
                                               const int &columnIndex);
 
-  llvm::ArrayRef<tfrt::AsyncValue *> transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs);
+  llvm::ArrayRef<tfrt::AsyncValue *> * transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs);
 
   // Loads a OneHotEncoderModel from given path. The path should be a directory
   // containing params and model data saved through

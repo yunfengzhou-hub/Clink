@@ -51,12 +51,16 @@ TEST(OneHotEncoderTest, Transform) {
       MakeAvailableAsyncValueRef<int>(0).release()
   };
   llvm::ArrayRef<tfrt::AsyncValue *> inputs(inputs_vec);
+  CLINK_LOG((long) inputs[0]);
 
-  llvm::ArrayRef<tfrt::AsyncValue *> outputs = model->transform(inputs);
+  llvm::ArrayRef<tfrt::AsyncValue *> *outputs = model->transform(inputs);
   std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << __FILE__ << " " << __LINE__ << " " << (*outputs)[0]->IsAvailable() << std::endl;
+  CLINK_LOG((long) (*outputs)[0]);
 
-  auto vector = outputs[0];
+  auto vector = (*outputs)[0];
   std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << __FILE__ << " " << __LINE__ << " " << vector->IsAvailable() << std::endl;
   EXPECT_TRUE(vector->IsUnconstructed());
   EXPECT_TRUE(vector->IsAvailable());
   EXPECT_TRUE(vector->IsConstructed());

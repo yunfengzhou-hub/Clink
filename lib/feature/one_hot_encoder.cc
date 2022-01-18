@@ -86,14 +86,32 @@ OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
   return vector;
 }
 
-llvm::ArrayRef<tfrt::AsyncValue *> OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
+llvm::ArrayRef<tfrt::AsyncValue *> * OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
+  CLINK_LOG((long) inputs[0]);
   int value = inputs[0]->get<int>();
   int columnIndex = inputs[1]->get<int>();
 
   tfrt::AsyncValueRef<SparseVector> vector = this->transform(value, columnIndex);
   std::cout << __FILE__ << " " << __LINE__ << " " << vector->toString() << std::endl;
 
-  return llvm::ArrayRef<tfrt::AsyncValue *>{vector.GetAsyncValue()};
+  llvm::SmallVector<tfrt::AsyncValue *, 1> vector_vec{
+    vector.release()
+  };
+  llvm::ArrayRef<tfrt::AsyncValue *> * vector_arr = new llvm::ArrayRef<tfrt::AsyncValue *>(vector_vec);
+  // tfrt::RCReference<tfrt::AsyncValue> tmp = vector.CopyRCRef();
+
+  std::cout << __FILE__ << " " << __LINE__ << " " << vector_vec[0]->IsAvailable() << std::endl;
+  CLINK_LOG((long) (*vector_arr)[0]);
+
+  // return llvm::ArrayRef<tfrt::AsyncValue *>{tmp};
+  return std::move(vector_arr);
+
+  // std::vector<tfrt::AsyncValue *> vector_vec = {
+  //     vector.GetAsyncValue()
+  // };
+  // llvm::ArrayRef<tfrt::AsyncValue *> vector_output(vector_vec);
+
+  // return vector_output;
 }
 
 void OneHotEncoderModel::setDropLast(const bool &is_droplast) {

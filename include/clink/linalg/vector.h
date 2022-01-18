@@ -18,6 +18,9 @@
 #define CLINK_LINALG_VECTOR_H_
 
 #include "tfrt/host_context/chain.h"
+#include <iostream>
+
+#define CLINK_LOG(CONTENT) std::cout << __FILE__ << " " << __LINE__ << " " << CONTENT << std::endl
 
 namespace clink {
 
