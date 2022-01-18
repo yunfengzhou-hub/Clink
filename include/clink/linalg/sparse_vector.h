@@ -48,10 +48,6 @@ public:
   // Gets a string representation of this vector.
   std::string toString();
 
-  ~SparseVector() {
-    CLINK_LOG("~SparseVector");
-  }
-
 private:
   const int n_;
   llvm::SmallVector<int, 4> indices_;

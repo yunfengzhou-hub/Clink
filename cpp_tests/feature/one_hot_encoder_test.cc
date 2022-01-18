@@ -50,23 +50,9 @@ TEST(OneHotEncoderTest, Transform) {
       MakeAvailableAsyncValueRef<int>(1).release(),
       MakeAvailableAsyncValueRef<int>(0).release()
   };
-  llvm::ArrayRef<tfrt::AsyncValue *> inputs(inputs_vec);
-  CLINK_LOG((long) inputs[0]);
 
-  llvm::ArrayRef<tfrt::AsyncValue *> *outputs = model->transform(inputs);
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
-  std::cout << __FILE__ << " " << __LINE__ << " " << (*outputs)[0]->IsAvailable() << std::endl;
-  CLINK_LOG((long) (*outputs)[0]);
-
-  auto vector = (*outputs)[0];
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
-  std::cout << __FILE__ << " " << __LINE__ << " " << vector->IsAvailable() << std::endl;
-  EXPECT_TRUE(vector->IsUnconstructed());
+  auto vector = model->transform(inputs_vec)[0];
   EXPECT_TRUE(vector->IsAvailable());
-  EXPECT_TRUE(vector->IsConstructed());
-  EXPECT_TRUE(vector->IsConcrete());
-  EXPECT_FALSE(vector->IsError());
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
   EXPECT_EQ(vector->get<SparseVector>().get(1).get(), 1.0);
 
   // auto invalid_value_vector = model->transform(1, 5);

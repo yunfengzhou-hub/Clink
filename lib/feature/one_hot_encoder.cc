@@ -62,11 +62,9 @@ std::string getOnlyFileInDirectory(std::string path) {
 
 tfrt::AsyncValueRef<SparseVector>
 OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
   if (columnIndex >= model_data_.featuresizes_size()) {
     return tfrt::MakeErrorAsyncValueRef("Column index out of range.");
   }
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
 
   int len = model_data_.featuresizes(columnIndex);
   if (value >= len) {
@@ -75,43 +73,22 @@ OneHotEncoderModel::transform(const int &value, const int &columnIndex) {
   if (getDropLast()) {
     len -= 1;
   }
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
 
   tfrt::AsyncValueRef<SparseVector> vector =
       tfrt::MakeAvailableAsyncValueRef<SparseVector>(len);
   if (value < len) {
     vector->set(value, 1.0);
   }
-  std::cout << __FILE__ << " " << __LINE__ << std::endl;
   return vector;
 }
 
-llvm::ArrayRef<tfrt::AsyncValue *> * OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
-  CLINK_LOG((long) inputs[0]);
+llvm::SmallVector<tfrt::AsyncValue *, 1> OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
   int value = inputs[0]->get<int>();
   int columnIndex = inputs[1]->get<int>();
 
   tfrt::AsyncValueRef<SparseVector> vector = this->transform(value, columnIndex);
-  std::cout << __FILE__ << " " << __LINE__ << " " << vector->toString() << std::endl;
 
-  llvm::SmallVector<tfrt::AsyncValue *, 1> vector_vec{
-    vector.release()
-  };
-  llvm::ArrayRef<tfrt::AsyncValue *> * vector_arr = new llvm::ArrayRef<tfrt::AsyncValue *>(vector_vec);
-  // tfrt::RCReference<tfrt::AsyncValue> tmp = vector.CopyRCRef();
-
-  std::cout << __FILE__ << " " << __LINE__ << " " << vector_vec[0]->IsAvailable() << std::endl;
-  CLINK_LOG((long) (*vector_arr)[0]);
-
-  // return llvm::ArrayRef<tfrt::AsyncValue *>{tmp};
-  return std::move(vector_arr);
-
-  // std::vector<tfrt::AsyncValue *> vector_vec = {
-  //     vector.GetAsyncValue()
-  // };
-  // llvm::ArrayRef<tfrt::AsyncValue *> vector_output(vector_vec);
-
-  // return vector_output;
+  return llvm::SmallVector<tfrt::AsyncValue *, 1>{vector.GetAsyncValue()};
 }
 
 void OneHotEncoderModel::setDropLast(const bool &is_droplast) {
