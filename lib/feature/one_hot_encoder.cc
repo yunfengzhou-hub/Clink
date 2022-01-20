@@ -23,26 +23,51 @@
 
 namespace clink {
 
-tfrt::AsyncValueRef<SparseVector>
-OneHotEncoderModel::transform(const int value, const int column_index) const {
-  if (column_index >= model_data_.featuresizes_size()) {
-    return tfrt::MakeErrorAsyncValueRef("Column index out of range.");
-  }
+llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
+OneHotEncoderModel::transform(
+    llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs,
+    const ExecutionContext &exec_ctx) const {
+  AsyncValueRef<int> value = tfrt::EnqueueWork(
+      exec_ctx, [value = inputs[0]] { return value->get<int>(); });
+  AsyncValueRef<int> column_index =
+      tfrt::EnqueueWork(exec_ctx, [column_index = inputs[1]] {
+        return column_index->get<int>();
+      });
 
-  int len = model_data_.featuresizes(column_index);
-  if (value >= len) {
-    return tfrt::MakeErrorAsyncValueRef("Value out of range.");
-  }
-  if (getDropLast()) {
-    len -= 1;
-  }
+  SmallVector<AsyncValue *, 4> async_values;
+  async_values.push_back(value.GetAsyncValue());
+  async_values.push_back(column_index.GetAsyncValue());
 
-  tfrt::AsyncValueRef<SparseVector> vector =
-      tfrt::MakeAvailableAsyncValueRef<SparseVector>(len);
-  if (value < len) {
-    vector->set(value, 1.0);
-  }
-  return vector;
+  auto output = MakeUnconstructedAsyncValueRef<SparseVector>(exec_ctx.host());
+  RunWhenReady(async_values, [model = this, tmp_value = std::move(value),
+                              tmp_column_index = std::move(column_index),
+                              output = output.CopyRef(), exec_ctx]() {
+    int value = tmp_value.get();
+    int column_index = tmp_column_index.get();
+    if (column_index >= model->model_data_.featuresizes_size()) {
+      output.SetError("Column index out of range.");
+      return;
+    }
+
+    int len = model->model_data_.featuresizes(column_index);
+    if (value >= len) {
+      output.SetError("Value out of range.");
+      return;
+    }
+    if (model->getDropLast()) {
+      len -= 1;
+    }
+
+    SparseVector vector(len);
+    if (value < len) {
+      vector.set(value, 1.0);
+    }
+    output.emplace(std::move(vector));
+  });
+
+  llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> result;
+  result.push_back(output.CopyRCRef());
+  return result;
 }
 
 void OneHotEncoderModel::setDropLast(const bool is_droplast) {

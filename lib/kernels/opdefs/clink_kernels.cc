@@ -31,7 +31,7 @@ ClinkDialect::ClinkDialect(MLIRContext *context)
   allowUnknownTypes();
   allowUnknownOperations();
 
-  addTypes<ModelType, VectorType>();
+  addTypes<ModelType, ArrayRefType, SmallVectorType>();
 
   addOperations<
 #define GET_OP_LIST
@@ -43,8 +43,10 @@ mlir::Type ClinkDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef spec = parser.getFullSymbolSpec();
   if (spec == "model")
     return ModelType::get(getContext());
-  if (spec == "vector")
-    return VectorType::get(getContext());
+  if (spec == "arrayref")
+    return ArrayRefType::get(getContext());
+  if (spec == "smallvector")
+    return SmallVectorType::get(getContext());
 
   if (auto type = mlir::Dialect::parseType(parser))
     return type;
@@ -61,8 +63,13 @@ void ClinkDialect::printType(mlir::Type type,
     return;
   }
 
-  if (type.isa<VectorType>()) {
-    printer << "vector";
+  if (type.isa<ArrayRefType>()) {
+    printer << "arrayref";
+    return;
+  }
+
+  if (type.isa<SmallVectorType>()) {
+    printer << "smallvector";
     return;
   }
 

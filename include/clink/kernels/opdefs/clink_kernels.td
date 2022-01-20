@@ -51,9 +51,13 @@ def Clink_ModelType :
   Type<CPred<"$_self.isa<clink::ModelType>()">, "!clink.model type">,
   BuildableType<"$_builder.getType<clink::ModelType>()">;
 
-def Clink_VectorType :
-  Type<CPred<"$_self.isa<clink::VectorType>()">, "!clink.vector type">,
-  BuildableType<"$_builder.getType<clink::VectorType>()">;
+def Clink_ArrayRefType :
+  Type<CPred<"$_self.isa<clink::ArrayRefType>()">, "!clink.arrayref type">,
+  BuildableType<"$_builder.getType<clink::ArrayRefType>()">;
+
+def Clink_SmallVectorType :
+  Type<CPred<"$_self.isa<clink::SmallVectorType>()">, "!clink.smallvector type">,
+  BuildableType<"$_builder.getType<clink::SmallVectorType>()">;
 
 //===----------------------------------------------------------------------===//
 // Clink ops
@@ -87,15 +91,16 @@ def SquareF64Op: Clink_Op<"square.f64"> {
   let verifier = ?;
 }
 
-def OneHotEncoderLoadOp: Clink_Op<"onehotencoder_load"> {
-  let summary = "onehotencoder_load operation";
+class LoadOp<string suffix> : Clink_Op<"load." # suffix> {
+  let summary = "clink.load operation";
   let description = [{
-     An operation that loads a OneHotEncoderModel from a given path. The path should be a directory
-     containing params and model data saved through
-     org.clink.feature.onehotencoder.ClinkOneHotEnoderModel::save(...).
+     An operation that creates a Model's subclass instance based on the 
+     data read from the given path. The path should be a directory
+     containing params and model data saved by Clink's corresponding Java 
+     operator's void save(String path) method.
 
      Example:
-       %1 = clink.onehotencoder_load %0
+       %1 = clink.load.onehotencoder %0
   }];
   let arguments = (ins TFRT_StringType:$path);
   let results = (outs Clink_ModelType:$model);
@@ -103,23 +108,23 @@ def OneHotEncoderLoadOp: Clink_Op<"onehotencoder_load"> {
   let verifier = ?;
 }
 
-// TODO: Change this to generic kernels for load and transform operations
-def OneHotEncoderTransformOp: Clink_Op<"onehotencoder_transform"> {
-  let summary = "onehotencoder_transform operation";
+def OneHotEncoderLoadOp : LoadOp<"onehotencoder">;
+
+def TransformOp: Clink_Op<"transform"> {
+  let summary = "transform operation";
   let description = [{
-     An operation that transforms data based on a OneHotEncoderModel. It takes a value
-     and its index among all columns in a database table that needs to be one-hot
-     encoded, and returns the resulting encoded sparse vector.
+     An operation that transforms data based on a Model. It applies the Model 
+     on the given ArrayRef of input AsyncValues and returns the result Async 
+     values as a SmallVector.
 
      Example:
-       %3 = clink.onehotencoder_transform %0, %1, %2
+       %2 = clink.transform %0, %1
   }];
   let arguments = (ins 
     Clink_ModelType:$model,
-    I32:$value,
-    I32:$column_index
+    Clink_ArrayRefType:$inputs
   );
-  let results = (outs Clink_VectorType:$vector);
+  let results = (outs Clink_SmallVectorType:$outputs);
   let assemblyFormat = "operands attr-dict";
   let verifier = ?;
 }

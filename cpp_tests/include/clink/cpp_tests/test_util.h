@@ -88,23 +88,6 @@ void saveMetaDataModelData(std::string dir_name, nlohmann::json params,
   model_data_output.close();
 }
 
-// Creates a ClinkRunner, executes the provided mlir script and returns the
-// execution result.
-llvm::SmallVector<RCReference<AsyncValue>, 4>
-runMlirScript(tfrt::HostContext *host_context, MLIRContext *mlir_context,
-              string_view mlir_script,
-              llvm::ArrayRef<RCReference<AsyncValue>> inputs) {
-  // Initializes ClinkRunner.
-  clink::ClinkRunner::Builder builder;
-  builder.set_mlir_fn_name("main")
-      .set_mlir_input(mlir_script)
-      .set_host_context(host_context)
-      .set_mlir_context(mlir_context);
-  auto runner = builder.Compile();
-
-  return runner.Run(inputs);
-}
-
 } // namespace test
 } // namespace clink
 
