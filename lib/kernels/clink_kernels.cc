@@ -64,20 +64,19 @@ AsyncValueRef<double> SquareAdd(Argument<double> x, Argument<double> y,
 
 double Square(double x) { return x * x; }
 
-void OneHotEncoderLoad(Argument<std::string> path,
-                       Result<RCReference<OneHotEncoderModel>> result_model,
-                       KernelErrorHandler handler,
-                       const ExecutionContext &exec_ctx) {
-  auto model = OneHotEncoderModel::load(path.get(), exec_ctx.host());
+template <class T>
+void ModelLoad(Argument<std::string> path,
+               Result<RCReference<Model>> result_model,
+               KernelErrorHandler handler, const ExecutionContext &exec_ctx) {
+  auto model = T::load(path.get(), exec_ctx.host());
   CLINK_RETURN_IF_ERROR(handler, model.takeError());
   result_model.Emplace(model.get());
 }
 
-AsyncValueRef<SparseVector>
-OneHotEncoderTransform(RCReference<OneHotEncoderModel> model,
-                       Argument<int> value, Argument<int> column_index,
-                       const ExecutionContext &exec_ctx) {
-  return model->transform(value.get(), column_index.get());
+llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
+ModelTransform(RCReference<Model> model,
+               llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs) {
+  return model->transform(inputs);
 }
 
 //===----------------------------------------------------------------------===//
@@ -87,10 +86,9 @@ OneHotEncoderTransform(RCReference<OneHotEncoderModel> model,
 void RegisterClinkKernels(tfrt::KernelRegistry *registry) {
   registry->AddKernel("clink.square_add.f64", TFRT_KERNEL(SquareAdd));
   registry->AddKernel("clink.square.f64", TFRT_KERNEL(Square));
-  registry->AddKernel("clink.onehotencoder_load",
-                      TFRT_KERNEL(OneHotEncoderLoad));
-  registry->AddKernel("clink.onehotencoder_transform",
-                      TFRT_KERNEL(OneHotEncoderTransform));
+  registry->AddKernel("clink.load.onehotencoder",
+                      TFRT_KERNEL(ModelLoad<OneHotEncoderModel>));
+  registry->AddKernel("clink.transform", TFRT_KERNEL(ModelTransform));
 }
 
 } // namespace clink

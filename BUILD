@@ -53,10 +53,12 @@ tfrt_cc_binary(
 tfrt_cc_library(
     name = "clink_utils",
     srcs = [
+        "lib/utils/clink_model_runner.cc",
         "lib/utils/clink_runner.cc",
         "lib/utils/clink_utils.cc",
     ],
     hdrs = [
+        "include/clink/utils/clink_model_runner.h",
         "include/clink/utils/clink_runner.h",
         "include/clink/utils/clink_utils.h",
     ],

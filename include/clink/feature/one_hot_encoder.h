@@ -27,7 +27,8 @@ namespace clink {
 class OneHotEncoderModel : public Model {
 public:
   // Default constructor.
-  OneHotEncoderModel(tfrt::HostContext *host) : allocator_(host->allocator()) {}
+  OneHotEncoderModel(tfrt::HostContext *host)
+      : host_(host), allocator_(host->allocator()) {}
 
   // Move operations are supported.
   OneHotEncoderModel(OneHotEncoderModel &&other) = default;
@@ -37,8 +38,11 @@ public:
   OneHotEncoderModel(const OneHotEncoderModel &other) = delete;
   OneHotEncoderModel &operator=(const OneHotEncoderModel &) = delete;
 
-  // TODO: Add a transform method with generic signature in the Model class
-  // Converts the provided data to a SparseVector.
+  llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
+  transform(llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs);
+
+  // Applies the OneHotEncoderModel on the given value and column index, and
+  // returns the resulting SparseVector.
   tfrt::AsyncValueRef<SparseVector> transform(const int value,
                                               const int column_index) const;
 
@@ -73,6 +77,7 @@ private:
   // Model data of OneHotEncoderModel.
   OneHotEncoderModelDataProto model_data_;
 
+  tfrt::HostContext *host_;
   tfrt::HostAllocator *allocator_;
 };
 

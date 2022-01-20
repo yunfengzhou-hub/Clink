@@ -27,8 +27,14 @@ public:
   using Base::Base;
 };
 
-class VectorType
-    : public mlir::Type::TypeBase<VectorType, mlir::Type, mlir::TypeStorage> {
+class ArrayRefType
+    : public mlir::Type::TypeBase<ArrayRefType, mlir::Type, mlir::TypeStorage> {
+public:
+  using Base::Base;
+};
+
+class SmallVectorType : public mlir::Type::TypeBase<SmallVectorType, mlir::Type,
+                                                    mlir::TypeStorage> {
 public:
   using Base::Base;
 };

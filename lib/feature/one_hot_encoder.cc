@@ -45,6 +45,20 @@ OneHotEncoderModel::transform(const int value, const int column_index) const {
   return vector;
 }
 
+llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
+OneHotEncoderModel::transform(
+    llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs) {
+  host_->Await(inputs);
+  int value = inputs[0]->get<int>();
+  int columnIndex = inputs[1]->get<int>();
+
+  tfrt::AsyncValueRef<SparseVector> vector =
+      this->transform(value, columnIndex);
+
+  return llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>{
+      vector.ReleaseRCRef()};
+}
+
 void OneHotEncoderModel::setDropLast(const bool is_droplast) {
   params_.is_droplast = is_droplast;
 }
