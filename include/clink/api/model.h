@@ -18,6 +18,7 @@
 #define CLINK_API_MODEL_H_
 
 #include "tfrt/host_context/host_allocator.h"
+#include "tfrt/host_context/kernel_utils.h"
 #include "tfrt/support/ref_count.h"
 
 namespace clink {
@@ -35,8 +36,6 @@ public:
   }
 
   virtual llvm::SmallVector<tfrt::AsyncValue *, 1> transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs) = 0;
-
-  virtual llvm::Error load(std::string path, tfrt::HostContext *host) = 0;
 
 private:
   // For access to Destroy().

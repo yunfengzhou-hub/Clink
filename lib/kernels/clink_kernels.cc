@@ -80,13 +80,18 @@ OneHotEncoderTransform(RCReference<OneHotEncoderModel> model,
   return model->transform(value.get(), column_index.get());
 }
 
+template <class T>
 void ModelLoad(Argument<std::string> path,
                        Result<RCReference<Model>> result_model,
                        KernelErrorHandler handler,
                        const ExecutionContext &exec_ctx) {
-  auto model = OneHotEncoderModel::load(path.get(), exec_ctx.host());
+  auto model = T::load(path.get(), exec_ctx.host());
   CLINK_RETURN_IF_ERROR(handler, model.takeError());
   result_model.Emplace(model.get());
+}
+
+llvm::SmallVector<tfrt::AsyncValue *, 1> ModelTransform(RCReference<Model> model, llvm::ArrayRef<tfrt::AsyncValue *> inputs) {
+  return model->transform(inputs);
 }
 
 std::string SparseVectorToString(Argument<SparseVector> vector) {
@@ -106,6 +111,10 @@ void RegisterClinkKernels(tfrt::KernelRegistry *registry) {
                       TFRT_KERNEL(OneHotEncoderTransform));
   registry->AddKernel("clink.sparsevector_tostring",
                       TFRT_KERNEL(SparseVectorToString));
+  registry->AddKernel("clink.load.onehotencoder",
+                      TFRT_KERNEL(ModelLoad<OneHotEncoderModel>));
+  registry->AddKernel("clink.transform",
+                      TFRT_KERNEL(ModelTransform));
 }
 
 } // namespace clink

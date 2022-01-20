@@ -95,7 +95,7 @@ def SquareF64Op: Clink_Op<"square.f64"> {
   let verifier = ?;
 }
 
-def OneHotEncoderLoadOp: Clink_Op<"onehotencoder_load"> {
+def OneHotEncoderLoadOp: Clink_Op<"load.onehotencoder"> {
   let summary = "onehotencoder_load operation";
   let description = [{
      An operation that loads a OneHotEncoderModel from a given path. The path should be a directory
@@ -112,7 +112,7 @@ def OneHotEncoderLoadOp: Clink_Op<"onehotencoder_load"> {
 }
 
 // TODO: Change this to generic kernels for load and transform operations
-def OneHotEncoderTransformOp: Clink_Op<"onehotencoder_transform"> {
+def OneHotEncoderTransformOp: Clink_Op<"transform"> {
   let summary = "onehotencoder_transform operation";
   let description = [{
      An operation that transforms data based on a OneHotEncoderModel. It takes a value
@@ -124,10 +124,9 @@ def OneHotEncoderTransformOp: Clink_Op<"onehotencoder_transform"> {
   }];
   let arguments = (ins 
     Clink_ModelType:$model,
-    I32:$value,
-    I32:$column_index
+    Clink_ModelInputType:$inputs
   );
-  let results = (outs Clink_SparseVectorType:$vector);
+  let results = (outs Clink_ModelOutputType:$outputs);
   let assemblyFormat = "operands attr-dict";
   let verifier = ?;
 }

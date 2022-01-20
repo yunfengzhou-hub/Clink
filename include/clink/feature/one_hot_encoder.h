@@ -47,9 +47,9 @@ public:
   // Loads a OneHotEncoderModel from given path. The path should be a directory
   // containing params and model data saved through
   // org.clink.feature.onehotencoder.ClinkOneHotEnoderModel::save(...).
-  llvm::Error load(std::string path, tfrt::HostContext *host);
-  // static llvm::Expected<tfrt::RCReference<OneHotEncoderModel>>
-  // load(const std::string &path, tfrt::HostContext *host);
+  // static llvm::Error load(std::string path, tfrt::HostContext *host);
+  static llvm::Expected<tfrt::RCReference<OneHotEncoderModel>>
+  load(const std::string &path, tfrt::HostContext *host);
 
   void setDropLast(const bool &is_droplast);
 
