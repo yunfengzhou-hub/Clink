@@ -79,7 +79,16 @@ Then, users can run the following command to build all targets and to run all
 tests.
 
 ```bash
-$ bazel test $(bazel query //...)
+$ bazel test $(bazel query //...) -c dbg
+```
+
+The command above compiles Clink and checks its correctness in Bazel's `dbg`
+mode. This mode is used for running and debugging tests, and might bring
+additional performance overhead. In order to avoid the overhead when using Clink
+in production environment, run the following command to generate Clink targets.
+
+```bash
+$ bazel build $(bazel query //...)
 ```
 
 ### Executing Examples
