@@ -55,8 +55,8 @@ tfrt::HostContext *OneHotEncoderTest::host_context = nullptr;
 MLIRContext *OneHotEncoderTest::mlir_context = nullptr;
 
 TEST_F(OneHotEncoderTest, Param) {
-  RCReference<OneHotEncoderModel> model =
-      tfrt::TakeRef(host_context->Construct<OneHotEncoderModel>(host_context));
+  RCReference<OneHotEncoderModel> model = tfrt::TakeRef(
+      host_context->Construct<OneHotEncoderModel>(host_context));
   model->setDropLast(false);
   EXPECT_FALSE(model->getDropLast());
   model->setDropLast(true);
@@ -70,8 +70,8 @@ TEST_F(OneHotEncoderTest, Transform) {
   std::string model_data_str;
   model_data.SerializeToString(&model_data_str);
 
-  RCReference<OneHotEncoderModel> model =
-      tfrt::TakeRef(host_context->Construct<OneHotEncoderModel>(host_context));
+  RCReference<OneHotEncoderModel> model = tfrt::TakeRef(
+      host_context->Construct<OneHotEncoderModel>(host_context));
   model->setDropLast(false);
   llvm::Error err = model->setModelData(std::move(model_data_str));
   EXPECT_FALSE(err);
@@ -100,8 +100,8 @@ TEST_F(OneHotEncoderTest, Load) {
 
   test::saveMetaDataModelData(tmp_folder.getAbsolutePath(), params, model_data);
 
-  auto model =
-      OneHotEncoderModel::load(tmp_folder.getAbsolutePath(), host_context);
+  auto model = OneHotEncoderModel::load(tmp_folder.getAbsolutePath(),
+                                        host_context);
   EXPECT_FALSE((bool)model.takeError());
 
   SparseVector expected_vector(2);
@@ -138,8 +138,8 @@ TEST_F(OneHotEncoderTest, Mlir) {
   inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(1));
   inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(0));
 
-  auto results =
-      test::runMlirScript(host_context, mlir_context, mlir_script, inputs);
+  auto results = test::runMlirScript(host_context, mlir_context,
+                                     mlir_script, inputs);
   EXPECT_EQ(results.size(), 1);
   host_context->Await(results);
   SparseVector &actual_vector = results[0]->get<SparseVector>();
@@ -153,8 +153,8 @@ TEST_F(OneHotEncoderTest, Mlir) {
   invalid_inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(5));
   invalid_inputs.push_back(tfrt::MakeAvailableAsyncValueRef<int32_t>(5));
 
-  auto invalid_results = test::runMlirScript(host_context, mlir_context,
-                                             mlir_script, invalid_inputs);
+  auto invalid_results = test::runMlirScript(
+      host_context, mlir_context, mlir_script, invalid_inputs);
   EXPECT_EQ(invalid_results.size(), 1);
   host_context->Await(invalid_results);
   EXPECT_TRUE(invalid_results[0]->IsError());
