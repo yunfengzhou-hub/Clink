@@ -73,11 +73,13 @@ void ModelLoad(Argument<std::string> path,
   result_model.Emplace(model.get());
 }
 
-llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
-ModelTransform(RCReference<Model> model,
-               llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs,
-               const ExecutionContext &exec_ctx) {
-  return model->transform(inputs, exec_ctx);
+void ModelTransform(RCReference<Model> model, RemainingArguments args,
+                    tfrt::RemainingResults results, KernelErrorHandler handler,
+                    const ExecutionContext &exec_ctx) {
+  auto outputs = model->transform(args.values(), exec_ctx);
+  for (int i = 0; i < outputs.size(); i++) {
+    results.EmplaceAt<tfrt::RCReference<tfrt::AsyncValue>>(i, outputs[i]);
+  }
 }
 
 //===----------------------------------------------------------------------===//

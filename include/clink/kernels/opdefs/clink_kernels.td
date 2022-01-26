@@ -51,13 +51,9 @@ def Clink_ModelType :
   Type<CPred<"$_self.isa<clink::ModelType>()">, "!clink.model type">,
   BuildableType<"$_builder.getType<clink::ModelType>()">;
 
-def Clink_ArrayRefType :
-  Type<CPred<"$_self.isa<clink::ArrayRefType>()">, "!clink.arrayref type">,
-  BuildableType<"$_builder.getType<clink::ArrayRefType>()">;
-
-def Clink_SmallVectorType :
-  Type<CPred<"$_self.isa<clink::SmallVectorType>()">, "!clink.smallvector type">,
-  BuildableType<"$_builder.getType<clink::SmallVectorType>()">;
+def Clink_VectorType :
+  Type<CPred<"$_self.isa<clink::VectorType>()">, "!clink.vector type">,
+  BuildableType<"$_builder.getType<clink::VectorType>()">;
 
 //===----------------------------------------------------------------------===//
 // Clink ops
@@ -114,18 +110,20 @@ def TransformOp: Clink_Op<"transform"> {
   let summary = "transform operation";
   let description = [{
      An operation that transforms data based on a Model. It applies the Model 
-     on the given ArrayRef of input AsyncValues and returns the result Async 
-     values as a SmallVector.
+     on any given input AsyncValues and returns the transformation results as 
+     AsyncValues.
+
+     The input (except Model, the first input argument) and result types must 
+     be specified after the colon.
 
      Example:
-       %2 = clink.transform %0, %1
+       %2 = clink.transform %model, %0, %1 : (i32, i32) -> !clink.vector
   }];
   let arguments = (ins 
     Clink_ModelType:$model,
-    Clink_ArrayRefType:$inputs
+    Variadic<AnyType>:$inputs
   );
-  let results = (outs Clink_SmallVectorType:$outputs);
-  let assemblyFormat = "operands attr-dict";
+  let results = (outs Variadic<AnyType>:$outputs);
   let verifier = ?;
 }
 

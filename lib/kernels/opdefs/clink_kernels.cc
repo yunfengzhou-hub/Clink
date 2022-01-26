@@ -31,7 +31,7 @@ ClinkDialect::ClinkDialect(MLIRContext *context)
   allowUnknownTypes();
   allowUnknownOperations();
 
-  addTypes<ModelType, ArrayRefType, SmallVectorType>();
+  addTypes<ModelType, VectorType>();
 
   addOperations<
 #define GET_OP_LIST
@@ -43,10 +43,8 @@ mlir::Type ClinkDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef spec = parser.getFullSymbolSpec();
   if (spec == "model")
     return ModelType::get(getContext());
-  if (spec == "arrayref")
-    return ArrayRefType::get(getContext());
-  if (spec == "smallvector")
-    return SmallVectorType::get(getContext());
+  if (spec == "vector")
+    return VectorType::get(getContext());
 
   if (auto type = mlir::Dialect::parseType(parser))
     return type;
@@ -63,17 +61,45 @@ void ClinkDialect::printType(mlir::Type type,
     return;
   }
 
-  if (type.isa<ArrayRefType>()) {
-    printer << "arrayref";
-    return;
-  }
-
-  if (type.isa<SmallVectorType>()) {
-    printer << "smallvector";
+  if (type.isa<VectorType>()) {
+    printer << "vector";
     return;
   }
 
   llvm_unreachable("unknown data type");
+}
+
+namespace {
+
+static Type GetModelType(Builder *builder) {
+  return builder->getType<ModelType>();
+}
+
+} // namespace
+
+//===----------------------------------------------------------------------===//
+// TransformOp
+//===----------------------------------------------------------------------===//
+
+static ParseResult parseTransformOp(OpAsmParser &parser,
+                                    OperationState &result) {
+  SmallVector<OpAsmParser::OperandType, 4> operands;
+  SmallVector<Type, 4> operand_types;
+  FunctionType calleeType;
+  auto calleeLoc = parser.getNameLoc();
+  if (parser.parseOperandList(operands) || parser.parseColonType(calleeType) ||
+      parser.addTypesToList(calleeType.getResults(), result.types)) {
+    return failure();
+  }
+  operand_types.push_back(GetModelType(&parser.getBuilder()));
+  operand_types.insert(operand_types.end(), calleeType.getInputs().begin(),
+                       calleeType.getInputs().end());
+  if (parser.resolveOperands(operands, operand_types, calleeLoc,
+                             result.operands)) {
+    return failure();
+  }
+
+  return success();
 }
 
 } // namespace clink

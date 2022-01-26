@@ -24,9 +24,8 @@
 namespace clink {
 
 llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
-OneHotEncoderModel::transform(
-    llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs,
-    const ExecutionContext &exec_ctx) const {
+OneHotEncoderModel::transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs,
+                              const ExecutionContext &exec_ctx) const {
   AsyncValueRef<int> value = tfrt::EnqueueWork(
       exec_ctx, [value = inputs[0]] { return value->get<int>(); });
   AsyncValueRef<int> column_index =

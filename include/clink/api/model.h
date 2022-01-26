@@ -37,9 +37,9 @@ public:
   virtual ~Model() {}
 
   // Applies the Model on the given ArrayRef of input AsyncValues and returns
-  // the result Async values as a SmallVector.
+  // a SmallVector of AsyncValues.
   virtual llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
-  transform(llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs,
+  transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs,
             const tfrt::ExecutionContext &exec_ctx) const = 0;
 
 protected:

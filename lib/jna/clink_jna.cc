@@ -142,9 +142,9 @@ void SparseVector_delete(SparseVectorJNA *vector) {
 SparseVectorJNA *OneHotEncoderModel_transform(clink::OneHotEncoderModel *model,
                                               const int value,
                                               const int column_index) {
-  llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-      MakeAvailableAsyncValueRef<int>(value),
-      MakeAvailableAsyncValueRef<int>(column_index)};
+  llvm::SmallVector<tfrt::AsyncValue *, 4> inputs = {
+      MakeAvailableAsyncValueRef<int>(value).release(),
+      MakeAvailableAsyncValueRef<int>(column_index).release()};
 
   auto output = model->transform(inputs, getJnaExecutionContext())[0];
   getJnaHostContext()->Await(output);

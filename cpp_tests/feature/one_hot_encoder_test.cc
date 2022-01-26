@@ -45,10 +45,10 @@ protected:
 
   static void TearDownTestSuite() {
     delete host_context;
-    host_context = nullptr;
     delete mlir_context;
-    mlir_context = nullptr;
     delete exec_context;
+    host_context = nullptr;
+    mlir_context = nullptr;
     exec_context = nullptr;
   }
 
@@ -89,8 +89,9 @@ TEST_F(OneHotEncoderTest, Transform) {
   expected_vector.set(1, 1.0);
 
   {
-    llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-        MakeAvailableAsyncValueRef<int>(1), MakeAvailableAsyncValueRef<int>(0)};
+    llvm::SmallVector<tfrt::AsyncValue *, 4> inputs = {
+        MakeAvailableAsyncValueRef<int>(1).release(),
+        MakeAvailableAsyncValueRef<int>(0).release()};
 
     auto outputs = model->transform(inputs, *exec_context);
     host_context->Await(outputs);
@@ -99,8 +100,9 @@ TEST_F(OneHotEncoderTest, Transform) {
   }
 
   {
-    llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-        MakeAvailableAsyncValueRef<int>(5), MakeAvailableAsyncValueRef<int>(5)};
+    llvm::SmallVector<tfrt::AsyncValue *, 4> inputs = {
+        MakeAvailableAsyncValueRef<int>(5).release(),
+        MakeAvailableAsyncValueRef<int>(5).release()};
 
     auto outputs = model->transform(inputs, *exec_context);
     host_context->Await(outputs);
@@ -127,8 +129,9 @@ TEST_F(OneHotEncoderTest, Load) {
   SparseVector expected_vector(2);
   expected_vector.set(1, 1.0);
 
-  llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-      MakeAvailableAsyncValueRef<int>(1), MakeAvailableAsyncValueRef<int>(0)};
+  llvm::SmallVector<tfrt::AsyncValue *, 4> inputs = {
+      MakeAvailableAsyncValueRef<int>(1).release(),
+      MakeAvailableAsyncValueRef<int>(0).release()};
 
   auto outputs = model.get()->transform(inputs, *exec_context);
   host_context->Await(outputs);
@@ -170,9 +173,9 @@ TEST_F(OneHotEncoderTest, Mlir) {
   auto model_ref = model_load_outputs[0];
 
   const std::string model_transform_script = R"mlir(
-    func @main(%model: !clink.model, %inputs: !clink.arrayref) -> !clink.smallvector {
-        %outputs = clink.transform %model, %inputs
-        tfrt.return %outputs : !clink.smallvector
+    func @main(%model: !clink.model, %value: i32, %column_index: i32) -> !clink.vector {
+        %outputs = clink.transform %model, %value, %column_index : (i32, i32) -> !clink.vector
+        tfrt.return %outputs : !clink.vector
     }
   )mlir";
 
@@ -180,46 +183,36 @@ TEST_F(OneHotEncoderTest, Mlir) {
   auto model_transform_runner = builder.Compile();
 
   {
-    llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-        MakeAvailableAsyncValueRef<int>(1), MakeAvailableAsyncValueRef<int>(0)};
+    llvm::SmallVector<RCReference<AsyncValue>, 4> inputs;
+    inputs.push_back(model_ref);
+    inputs.push_back(MakeAvailableAsyncValueRef<int>(1).CopyRCRef());
+    inputs.push_back(MakeAvailableAsyncValueRef<int>(0).CopyRCRef());
 
-    llvm::SmallVector<RCReference<AsyncValue>, 4> mlir_inputs;
-    mlir_inputs.push_back(model_ref);
-    mlir_inputs.push_back(
-        MakeAvailableAsyncValueRef<
-            llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>>>(inputs));
-
-    auto results = model_transform_runner.Run(mlir_inputs);
+    auto results = model_transform_runner.Run(inputs);
     host_context->Await(results);
-    auto outputs =
+    host_context->Await(results[0]->get<tfrt::RCReference<tfrt::AsyncValue>>());
+    SparseVector &actual_vector =
         results[0]
-            ->get<llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>>();
+            ->get<tfrt::RCReference<tfrt::AsyncValue>>()
+            ->get<SparseVector>();
 
-    host_context->Await(outputs);
-    SparseVector &actual_vector = outputs[0]->get<SparseVector>();
     SparseVector expected_vector(2);
     expected_vector.set(1, 1.0);
     EXPECT_EQ(actual_vector, expected_vector);
   }
 
   {
-    llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4> inputs = {
-        MakeAvailableAsyncValueRef<int>(5), MakeAvailableAsyncValueRef<int>(5)};
+    llvm::SmallVector<RCReference<AsyncValue>, 4> inputs;
+    inputs.push_back(model_ref);
+    inputs.push_back(MakeAvailableAsyncValueRef<int>(5).CopyRCRef());
+    inputs.push_back(MakeAvailableAsyncValueRef<int>(5).CopyRCRef());
 
-    llvm::SmallVector<RCReference<AsyncValue>, 4> mlir_inputs;
-    mlir_inputs.push_back(model_ref);
-    mlir_inputs.push_back(
-        MakeAvailableAsyncValueRef<
-            llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>>>(inputs));
-
-    auto results = model_transform_runner.Run(mlir_inputs);
+    auto results = model_transform_runner.Run(inputs);
     host_context->Await(results);
-    auto outputs =
-        results[0]
-            ->get<llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>>();
 
-    host_context->Await(outputs);
-    EXPECT_TRUE(outputs[0]->IsError());
+    auto output = results[0]->get<tfrt::RCReference<tfrt::AsyncValue>>();
+    host_context->Await(output);
+    EXPECT_TRUE(output->IsError());
   }
 }
 

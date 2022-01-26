@@ -38,8 +38,8 @@ public:
   OneHotEncoderModel &operator=(const OneHotEncoderModel &) = delete;
 
   llvm::SmallVector<tfrt::RCReference<tfrt::AsyncValue>, 4>
-  transform(llvm::ArrayRef<tfrt::RCReference<tfrt::AsyncValue>> inputs,
-            const tfrt::ExecutionContext &exec_ctx) const;
+  transform(llvm::ArrayRef<tfrt::AsyncValue *> inputs,
+            const tfrt::ExecutionContext &exec_ctx) const override;
 
   // Loads a OneHotEncoderModel from given path. The path should be a directory
   // containing params and model data saved through
