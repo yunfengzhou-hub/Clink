@@ -55,9 +55,11 @@ extern "C" {
 namespace {
 inline tfrt::HostContext *getJnaHostContext() {
 #ifndef NDEBUG
-  static tfrt::HostAllocatorType allocator_type = tfrt::HostAllocatorType::kLeakCheckMalloc;
+  static tfrt::HostAllocatorType allocator_type =
+      tfrt::HostAllocatorType::kLeakCheckMalloc;
 #else
-  static tfrt::HostAllocatorType allocator_type = tfrt::HostAllocatorType::kMalloc;
+  static tfrt::HostAllocatorType allocator_type =
+      tfrt::HostAllocatorType::kMalloc;
 #endif
   static tfrt::HostContext *jna_host_context =
       clink::CreateHostContext("mstd", allocator_type).release();
@@ -151,21 +153,10 @@ SparseVectorJNA *OneHotEncoderModel_transform(clink::OneHotEncoderModel *model,
                                                          getJnaHostContext());
 }
 
-clink::OneHotEncoderModel *
-OneHotEncoderModel_loadFromMemory(const char *params_str,
-                                  const char *model_data_str,
-                                  const int model_data_str_len) {
-  clink::OneHotEncoderModel *model =
-      getJnaHostContext()->Construct<clink::OneHotEncoderModel>(
-          getJnaHostContext());
-
-  nlohmann::json params = nlohmann::json::parse(params_str);
-  std::string is_droplast = params["dropLast"].get<std::string>();
-  model->setDropLast(is_droplast != "false");
-  CLINK_JNA_HANDLE_ERROR(
-      model->setModelData(std::string(model_data_str, model_data_str_len)))
-
-  return model;
+clink::OneHotEncoderModel *OneHotEncoderModel_load(const char *path) {
+  auto model = clink::OneHotEncoderModel::load(path, getJnaHostContext());
+  CLINK_JNA_HANDLE_ERROR(model.takeError());
+  return model->release();
 }
 
 void OneHotEncoderModel_delete(clink::OneHotEncoderModel *model) {

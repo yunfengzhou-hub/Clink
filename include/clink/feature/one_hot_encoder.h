@@ -52,10 +52,6 @@ public:
 
   bool getDropLast() const;
 
-  // TODO: load model data through file system instead of passing entire model
-  // data string.
-  llvm::Error setModelData(const std::string &model_data_str);
-
 private:
   void Destroy() override {
     Model::DestroyImpl<OneHotEncoderModel>(this, allocator_);

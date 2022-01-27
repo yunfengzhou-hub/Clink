@@ -16,6 +16,8 @@
 
 package org.flinkextended.clink.feature.onehotencoder;
 
+import com.sun.jna.Pointer;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapPartitionFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
@@ -40,20 +42,24 @@ import org.apache.flink.table.api.internal.TableImpl;
 import org.apache.flink.table.runtime.typeutils.ExternalTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.Preconditions;
-
-import com.sun.jna.Pointer;
-import org.apache.commons.lang3.ArrayUtils;
+import org.clink.feature.onehotencoder.OneHotEncoderModelDataProto;
 import org.flinkextended.clink.jna.ClinkJna;
 import org.flinkextended.clink.jna.SparseVectorJna;
 import org.flinkextended.clink.util.ByteArrayDecoder;
 import org.flinkextended.clink.util.ByteArrayEncoder;
-import org.flinkextended.clink.util.JnaUtils;
 import org.flinkextended.clink.util.ParamUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.ml.util.ParamUtils.initializeMapWithDefaultValues;
 
@@ -181,13 +187,24 @@ public class ClinkOneHotEncoderModel
     private static Pointer loadCppModel(
             Map<Param<?>, Object> paramMap, List<Tuple2<Integer, Integer>> modelDataList)
             throws IOException {
-        String paramString = ParamUtils.jsonEncode(paramMap);
+        File tmpDir = Files.createTempDirectory("ClinkOneHotEncoderModel").toFile();
+        String tmpDirStr = tmpDir.getAbsolutePath();
 
-        byte[] modelDataBytes = OneHotEncoderProtobufUtils.getModelDataByteArray(modelDataList);
-        Pointer modelDataPointer = JnaUtils.getByteArrayPointer(modelDataBytes);
+        ParamUtils.saveMetadata(paramMap, ClinkOneHotEncoderModel.class, tmpDirStr);
 
-        return ClinkJna.INSTANCE.OneHotEncoderModel_loadFromMemory(
-                paramString, modelDataPointer, modelDataBytes.length);
+        modelDataList.sort(Comparator.comparingInt(o -> o.f0));
+        OneHotEncoderModelDataProto.Builder builder = OneHotEncoderModelDataProto.newBuilder();
+        builder.addAllFeatureSizes(
+                modelDataList.stream().map(x -> x.f1).collect(Collectors.toList()));
+
+        new File(tmpDir, "data").mkdirs();
+        OutputStream modelDataOutput =
+                new FileOutputStream(Paths.get(tmpDirStr, "data", "modelData").toFile());
+        builder.build().writeTo(modelDataOutput);
+
+        Pointer model = ClinkJna.INSTANCE.OneHotEncoderModel_load(tmpDirStr);
+        FileUtils.deleteDirectory(tmpDir);
+        return model;
     }
 
     @Override

@@ -34,22 +34,16 @@ public interface ClinkJna extends Library {
      *
      * @param vector A reference to the {@link SparseVectorJna} object.
      */
-    // TODO: Automatically free C++ objects to avoid memory leak and improve usability.
     void SparseVector_delete(SparseVectorJna.ByReference vector);
 
     /**
      * Loads a {@link org.apache.flink.ml.feature.onehotencoder.OneHotEncoderModel} C++ operator
-     * using parameters already stored in memory.
+     * from given path. The path should be a directory containing params saved in json format and
+     * model data saved in protobuf format.
      *
-     * @param paramsJson Json string representing the params of the Model
-     * @param modelDataProtoBuf Pointer to a memory chunk containing model data converted to
-     *     ProtoBuf byte array
-     * @param modelDataProtoBufLen Length of the model data byte array
      * @return Pointer to the loaded C++ Operator
      */
-    Pointer OneHotEncoderModel_loadFromMemory(
-            String paramsJson, Pointer modelDataProtoBuf, int modelDataProtoBufLen)
-            throws LastErrorException;
+    Pointer OneHotEncoderModel_load(String path) throws LastErrorException;
 
     /**
      * Converts an indexed integer to one-hot-encoded sparse vector, using the {@link

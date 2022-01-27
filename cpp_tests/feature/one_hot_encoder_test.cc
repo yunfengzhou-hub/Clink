@@ -64,35 +64,12 @@ TEST_F(OneHotEncoderTest, Param) {
 }
 
 TEST_F(OneHotEncoderTest, Transform) {
-  OneHotEncoderModelDataProto model_data;
-  model_data.add_featuresizes(2);
-  model_data.add_featuresizes(3);
-  std::string model_data_str;
-  model_data.SerializeToString(&model_data_str);
-
-  RCReference<OneHotEncoderModel> model =
-      tfrt::TakeRef(host_context->Construct<OneHotEncoderModel>(host_context));
-  model->setDropLast(false);
-  llvm::Error err = model->setModelData(std::move(model_data_str));
-  EXPECT_FALSE(err);
-
-  SparseVector expected_vector(2);
-  expected_vector.set(1, 1.0);
-  auto actual_vector = model->transform(1, 0);
-  EXPECT_EQ(actual_vector.get(), expected_vector);
-
-  auto invalid_value_vector = model->transform(1, 5);
-  EXPECT_TRUE(invalid_value_vector.IsError());
-
-  auto invalid_index_vector = model->transform(5, 0);
-  EXPECT_TRUE(invalid_index_vector.IsError());
-}
-
-TEST_F(OneHotEncoderTest, Load) {
   test::TemporaryFolder tmp_folder;
 
   nlohmann::json params;
-  params["paramMap"]["dropLast"] = "false";
+  // TODO: Add helper function that converts between json data of structured
+  // format and that of Flink ML, which wraps all values as strings
+  params["paramMap"] = "{\"dropLast\": \"false\"}";
 
   OneHotEncoderModelDataProto model_data;
   model_data.add_featuresizes(2);
@@ -114,7 +91,7 @@ TEST_F(OneHotEncoderTest, Mlir) {
   test::TemporaryFolder tmp_folder;
 
   nlohmann::json params;
-  params["paramMap"]["dropLast"] = "false";
+  params["paramMap"] = "{\"dropLast\": \"false\"}";
 
   OneHotEncoderModelDataProto model_data;
   model_data.add_featuresizes(2);
