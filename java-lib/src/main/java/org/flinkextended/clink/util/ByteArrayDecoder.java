@@ -22,8 +22,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.file.src.reader.SimpleStreamFormat;
 import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
-import org.apache.flink.util.Preconditions;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 
@@ -38,11 +38,18 @@ public class ByteArrayDecoder extends SimpleStreamFormat<byte[]> {
             @Override
             public byte[] read() throws IOException {
                 try {
-                    int expectedLen = inputViewStreamWrapper.readInt();
-                    byte[] bytes = new byte[expectedLen];
-                    int actualLen = inputViewStreamWrapper.read(bytes);
-                    Preconditions.checkArgument(expectedLen == actualLen);
-                    return bytes;
+                    int nRead;
+                    byte[] buffer = new byte[1024];
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    while ((nRead = inputViewStreamWrapper.read(buffer, 0, 1024)) != -1) {
+                        outputStream.write(buffer, 0, nRead);
+                    }
+                    outputStream.flush();
+                    byte[] result = outputStream.toByteArray();
+                    if (result.length == 0) {
+                        return null;
+                    }
+                    return result;
                 } catch (EOFException e) {
                     return null;
                 }

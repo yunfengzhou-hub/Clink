@@ -22,6 +22,7 @@ import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.ml.api.Model;
 import org.apache.flink.ml.common.broadcast.BroadcastUtils;
 import org.apache.flink.ml.common.datastream.DataStreamUtils;
@@ -40,6 +41,7 @@ import org.apache.flink.table.api.internal.TableImpl;
 import org.apache.flink.table.runtime.typeutils.ExternalTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.Preconditions;
 
 import com.sun.jna.Pointer;
@@ -48,10 +50,14 @@ import org.flinkextended.clink.jna.ClinkJna;
 import org.flinkextended.clink.jna.SparseVectorJna;
 import org.flinkextended.clink.util.ByteArrayDecoder;
 import org.flinkextended.clink.util.ByteArrayEncoder;
-import org.flinkextended.clink.util.JnaUtils;
-import org.flinkextended.clink.util.ParamUtils;
+import org.flinkextended.clink.util.ClinkReadWriteUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
 
@@ -63,6 +69,7 @@ import static org.apache.flink.ml.util.ParamUtils.initializeMapWithDefaultValues
 public class ClinkOneHotEncoderModel
         implements Model<ClinkOneHotEncoderModel>, OneHotEncoderParams<ClinkOneHotEncoderModel> {
     private final Map<Param<?>, Object> paramMap = new HashMap<>();
+    private String modelDataPath;
     private Table modelDataTable;
 
     public ClinkOneHotEncoderModel() {
@@ -98,7 +105,7 @@ public class ClinkOneHotEncoderModel
                 OneHotEncoderModelData.getModelDataStream(modelDataTable);
 
         GenerateOutputsFunction mapFunction =
-                new GenerateOutputsFunction(getParamMap(), broadcastModelKey, inputCols);
+                new GenerateOutputsFunction(getParamMap(), broadcastModelKey, inputCols, modelDataPath);
 
         Function<List<DataStream<?>>, DataStream<Row>> function =
                 dataStreams -> {
@@ -138,13 +145,23 @@ public class ClinkOneHotEncoderModel
         private final Map<Param<?>, Object> paramMap;
         private final String broadcastModelKey;
         private final String[] inputCols;
+        private final String modelDataPath;
         private Pointer modelPointer = null;
 
         private GenerateOutputsFunction(
-                Map<Param<?>, Object> paramMap, String broadcastModelKey, String[] inputCols) {
+                Map<Param<?>, Object> paramMap, String broadcastModelKey, String[] inputCols, String modelDataPath) {
             this.paramMap = new HashMap<>(paramMap);
             this.inputCols = inputCols;
             this.broadcastModelKey = broadcastModelKey;
+            this.modelDataPath = modelDataPath;
+        }
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            super.open(parameters);
+            if (modelDataPath != null) {
+                modelPointer = ClinkJna.INSTANCE.OneHotEncoderModel_load(modelDataPath);
+            }
         }
 
         @Override
@@ -181,23 +198,33 @@ public class ClinkOneHotEncoderModel
     private static Pointer loadCppModel(
             Map<Param<?>, Object> paramMap, List<Tuple2<Integer, Integer>> modelDataList)
             throws IOException {
-        String paramString = ParamUtils.jsonEncode(paramMap);
+        File tmpDir = Files.createTempDirectory("ClinkOneHotEncoderModel").toFile();
+        String tmpDirStr = tmpDir.getAbsolutePath();
+
+        ClinkReadWriteUtils.saveMetadata(paramMap, ClinkOneHotEncoderModel.class, tmpDirStr);
 
         byte[] modelDataBytes = OneHotEncoderProtobufUtils.getModelDataByteArray(modelDataList);
-        Pointer modelDataPointer = JnaUtils.getByteArrayPointer(modelDataBytes);
 
-        return ClinkJna.INSTANCE.OneHotEncoderModel_loadFromMemory(
-                paramString, modelDataPointer, modelDataBytes.length);
+        new File(tmpDir, "data").mkdirs();
+        OutputStream modelDataOutput =
+                new FileOutputStream(Paths.get(tmpDirStr, "data", "modelData").toFile());
+
+        new ByteArrayEncoder().encode(modelDataBytes, modelDataOutput);
+
+        Pointer model = ClinkJna.INSTANCE.OneHotEncoderModel_load(tmpDirStr);
+        FileUtils.deleteDirectory(tmpDir);
+        return model;
     }
 
     @Override
     public void save(String path) throws IOException {
-        ReadWriteUtils.saveMetadata(this, path);
+        ClinkReadWriteUtils.saveMetadata(getParamMap(), ClinkOneHotEncoderModel.class, path);
 
         DataStream<byte[]> modelDataProtoBuf =
                 DataStreamUtils.mapPartition(
                         OneHotEncoderModelData.getModelDataStream(getModelData()[0]),
                         new GenerateProtobufModelDataByteArrayFunction());
+        modelDataProtoBuf.getTransformation().setParallelism(1);
 
         ReadWriteUtils.saveModelData(modelDataProtoBuf, path, new ByteArrayEncoder());
     }
@@ -215,6 +242,8 @@ public class ClinkOneHotEncoderModel
             throws IOException {
         ClinkOneHotEncoderModel clinkModel =
                 (ClinkOneHotEncoderModel) ReadWriteUtils.loadStageParam(path);
+
+        clinkModel.modelDataPath = path;
 
         DataStream<byte[]> modelDataProtobuf =
                 ReadWriteUtils.loadModelData(env, path, new ByteArrayDecoder());

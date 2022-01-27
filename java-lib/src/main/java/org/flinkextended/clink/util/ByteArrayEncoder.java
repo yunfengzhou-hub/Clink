@@ -28,7 +28,6 @@ public class ByteArrayEncoder implements Encoder<byte[]> {
     public void encode(byte[] bytes, OutputStream outputStream) throws IOException {
         DataOutputViewStreamWrapper outputViewStreamWrapper =
                 new DataOutputViewStreamWrapper(outputStream);
-        outputViewStreamWrapper.writeInt(bytes.length);
         outputViewStreamWrapper.write(bytes);
         outputStream.flush();
     }
