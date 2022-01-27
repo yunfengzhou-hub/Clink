@@ -22,6 +22,7 @@ import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.ml.api.Model;
 import org.apache.flink.ml.common.broadcast.BroadcastUtils;
 import org.apache.flink.ml.common.datastream.DataStreamUtils;
@@ -40,6 +41,7 @@ import org.apache.flink.table.api.internal.TableImpl;
 import org.apache.flink.table.runtime.typeutils.ExternalTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.Preconditions;
 
 import com.sun.jna.Pointer;
@@ -48,10 +50,14 @@ import org.flinkextended.clink.jna.ClinkJna;
 import org.flinkextended.clink.jna.SparseVectorJna;
 import org.flinkextended.clink.util.ByteArrayDecoder;
 import org.flinkextended.clink.util.ByteArrayEncoder;
-import org.flinkextended.clink.util.JnaUtils;
-import org.flinkextended.clink.util.ParamUtils;
+import org.flinkextended.clink.util.ClinkReadWriteUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
 
@@ -63,6 +69,9 @@ import static org.apache.flink.ml.util.ParamUtils.initializeMapWithDefaultValues
 public class ClinkOneHotEncoderModel
         implements Model<ClinkOneHotEncoderModel>, OneHotEncoderParams<ClinkOneHotEncoderModel> {
     private final Map<Param<?>, Object> paramMap = new HashMap<>();
+    private final String broadcastModelKey = "OneHotEncoderModelStream";
+    private StreamExecutionEnvironment env;
+    private String modelDataPath;
     private Table modelDataTable;
 
     public ClinkOneHotEncoderModel() {
@@ -73,8 +82,6 @@ public class ClinkOneHotEncoderModel
     public Table[] transform(Table... inputs) {
         final String[] inputCols = getInputCols();
         final String[] outputCols = getOutputCols();
-        final String broadcastModelKey = "OneHotModelStream";
-        final Table modelDataTable = getModelData()[0];
 
         Preconditions.checkArgument(getHandleInvalid().equals(HasHandleInvalid.ERROR_INVALID));
         Preconditions.checkArgument(inputs.length == 1);
@@ -91,14 +98,28 @@ public class ClinkOneHotEncoderModel
                                         .toArray(new TypeInformation[0])),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), outputCols));
 
+        GenerateOutputsFunction mapFunction =
+                new GenerateOutputsFunction(
+                        getParamMap(), broadcastModelKey, inputCols, modelDataPath);
+
+        if (modelDataPath == null) {
+            return transformNonPersistent(inputs, mapFunction, outputTypeInfo);
+        } else {
+            return transformPersistent(inputs, mapFunction, outputTypeInfo);
+        }
+    }
+
+    /**
+     * Performs transformation on the basis that params and model data are not in permanent storage.
+     */
+    private Table[] transformNonPersistent(
+            Table[] inputs, GenerateOutputsFunction mapFunction, RowTypeInfo outputTypeInfo) {
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) modelDataTable).getTableEnvironment();
         DataStream<Row> input = tEnv.toDataStream(inputs[0]);
+
         DataStream<Tuple2<Integer, Integer>> modelStream =
                 OneHotEncoderModelData.getModelDataStream(modelDataTable);
-
-        GenerateOutputsFunction mapFunction =
-                new GenerateOutputsFunction(getParamMap(), broadcastModelKey, inputCols);
 
         Function<List<DataStream<?>>, DataStream<Row>> function =
                 dataStreams -> {
@@ -117,6 +138,19 @@ public class ClinkOneHotEncoderModel
         return new Table[] {outputTable};
     }
 
+    /**
+     * Performs transformation on the basis that params and model data live in permanent storage.
+     */
+    private Table[] transformPersistent(
+            Table[] inputs, GenerateOutputsFunction mapFunction, RowTypeInfo outputTypeInfo) {
+        StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
+        DataStream<Row> input = tEnv.toDataStream(inputs[0]);
+
+        DataStream<Row> output = input.map(mapFunction, outputTypeInfo);
+        Table outputTable = tEnv.fromDataStream(output);
+        return new Table[] {outputTable};
+    }
+
     @Override
     public ClinkOneHotEncoderModel setModelData(Table... inputs) {
         Preconditions.checkArgument(inputs.length == 1);
@@ -126,6 +160,29 @@ public class ClinkOneHotEncoderModel
 
     @Override
     public Table[] getModelData() {
+        // Materializes model data table if it has not been loaded from given path.
+        if (modelDataTable == null && modelDataPath != null) {
+            DataStream<byte[]> modelDataProtobuf =
+                    ReadWriteUtils.loadModelData(env, modelDataPath, new ByteArrayDecoder());
+            DataStream<Tuple2<Integer, Integer>> modelData =
+                    modelDataProtobuf.flatMap(
+                            new FlatMapFunction<byte[], Tuple2<Integer, Integer>>() {
+                                @Override
+                                public void flatMap(
+                                        byte[] bytes, Collector<Tuple2<Integer, Integer>> collector)
+                                        throws Exception {
+                                    for (Tuple2<Integer, Integer> tup2 :
+                                            OneHotEncoderProtobufUtils.getModelDataIterable(
+                                                    bytes)) {
+                                        collector.collect(tup2);
+                                    }
+                                }
+                            });
+
+            StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
+            setModelData(tEnv.fromDataStream(modelData));
+        }
+
         return new Table[] {modelDataTable};
     }
 
@@ -138,13 +195,26 @@ public class ClinkOneHotEncoderModel
         private final Map<Param<?>, Object> paramMap;
         private final String broadcastModelKey;
         private final String[] inputCols;
+        private final String modelDataPath;
         private Pointer modelPointer = null;
 
         private GenerateOutputsFunction(
-                Map<Param<?>, Object> paramMap, String broadcastModelKey, String[] inputCols) {
+                Map<Param<?>, Object> paramMap,
+                String broadcastModelKey,
+                String[] inputCols,
+                String modelDataPath) {
             this.paramMap = new HashMap<>(paramMap);
             this.inputCols = inputCols;
             this.broadcastModelKey = broadcastModelKey;
+            this.modelDataPath = modelDataPath;
+        }
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            super.open(parameters);
+            if (modelDataPath != null) {
+                modelPointer = ClinkJna.INSTANCE.OneHotEncoderModel_load(modelDataPath);
+            }
         }
 
         @Override
@@ -181,23 +251,33 @@ public class ClinkOneHotEncoderModel
     private static Pointer loadCppModel(
             Map<Param<?>, Object> paramMap, List<Tuple2<Integer, Integer>> modelDataList)
             throws IOException {
-        String paramString = ParamUtils.jsonEncode(paramMap);
+        File tmpDir = Files.createTempDirectory("ClinkOneHotEncoderModel").toFile();
+        String tmpDirStr = tmpDir.getAbsolutePath();
+
+        ClinkReadWriteUtils.saveMetadata(paramMap, ClinkOneHotEncoderModel.class, tmpDirStr);
 
         byte[] modelDataBytes = OneHotEncoderProtobufUtils.getModelDataByteArray(modelDataList);
-        Pointer modelDataPointer = JnaUtils.getByteArrayPointer(modelDataBytes);
 
-        return ClinkJna.INSTANCE.OneHotEncoderModel_loadFromMemory(
-                paramString, modelDataPointer, modelDataBytes.length);
+        new File(tmpDir, "data").mkdirs();
+        OutputStream modelDataOutput =
+                new FileOutputStream(Paths.get(tmpDirStr, "data", "modelData").toFile());
+
+        new ByteArrayEncoder().encode(modelDataBytes, modelDataOutput);
+
+        Pointer model = ClinkJna.INSTANCE.OneHotEncoderModel_load(tmpDirStr);
+        FileUtils.deleteDirectory(tmpDir);
+        return model;
     }
 
     @Override
     public void save(String path) throws IOException {
-        ReadWriteUtils.saveMetadata(this, path);
+        ClinkReadWriteUtils.saveMetadata(getParamMap(), getClass(), path);
 
         DataStream<byte[]> modelDataProtoBuf =
                 DataStreamUtils.mapPartition(
                         OneHotEncoderModelData.getModelDataStream(getModelData()[0]),
                         new GenerateProtobufModelDataByteArrayFunction());
+        modelDataProtoBuf.getTransformation().setParallelism(1);
 
         ReadWriteUtils.saveModelData(modelDataProtoBuf, path, new ByteArrayEncoder());
     }
@@ -216,24 +296,9 @@ public class ClinkOneHotEncoderModel
         ClinkOneHotEncoderModel clinkModel =
                 (ClinkOneHotEncoderModel) ReadWriteUtils.loadStageParam(path);
 
-        DataStream<byte[]> modelDataProtobuf =
-                ReadWriteUtils.loadModelData(env, path, new ByteArrayDecoder());
-        DataStream<Tuple2<Integer, Integer>> modelData =
-                modelDataProtobuf.flatMap(
-                        new FlatMapFunction<byte[], Tuple2<Integer, Integer>>() {
-                            @Override
-                            public void flatMap(
-                                    byte[] bytes, Collector<Tuple2<Integer, Integer>> collector)
-                                    throws Exception {
-                                for (Tuple2<Integer, Integer> tup2 :
-                                        OneHotEncoderProtobufUtils.getModelDataIterable(bytes)) {
-                                    collector.collect(tup2);
-                                }
-                            }
-                        });
-
-        StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
-        clinkModel.setModelData(tEnv.fromDataStream(modelData));
+        // Load model data lazily to avoid IO operation if possible.
+        clinkModel.modelDataPath = path;
+        clinkModel.env = env;
 
         return clinkModel;
     }
